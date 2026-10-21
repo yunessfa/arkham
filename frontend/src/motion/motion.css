@@ -1,0 +1,1617 @@
+/* ARKHAM Atelier / shared visual and motion language. No 3D outside Home. */
+:root {
+  --atelier-ink: #25251e;
+  --atelier-cream: #fff8e9;
+  --atelier-muted: #6d6658;
+  --atelier-line: #b7a37666;
+  --atelier-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --atelier-reveal: 900ms;
+  --atelier-micro: 240ms;
+}
+.atelier-honey,
+.atelier-botanical {
+  position: absolute;
+  pointer-events: none;
+  color: inherit;
+  z-index: 0;
+}
+.atelier-honey {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.045;
+}
+.atelier-botanical {
+  inset-inline-end: 0;
+  bottom: 0;
+  width: min(36%, 340px);
+  height: auto;
+  opacity: 0.16;
+}
+.atelier-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: #9b7c3b;
+  max-width: 480px;
+  margin: 40px auto;
+  pointer-events: none;
+}
+.atelier-divider:before,
+.atelier-divider:after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, #ac8c4d80);
+}
+.atelier-divider:after {
+  transform: scaleX(-1);
+}
+.atelier-divider span {
+  font-size: 22px;
+  line-height: 1;
+}
+.atelier-page {
+  padding-top: 0;
+  isolation: isolate;
+}
+.atelier-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #f2ebdc;
+  min-height: 310px;
+  padding: 64px 56px;
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--atelier-line);
+}
+.atelier-header-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 78%;
+}
+.atelier-header .eyebrow {
+  font:
+    11px/1.8 Arial,
+    sans-serif;
+  letter-spacing: 0.2em;
+  color: #79602f;
+  display: inline-block;
+}
+.atelier-header h1 {
+  font-size: clamp(32px, 3.5vw, 54px);
+  font-weight: 500;
+  line-height: 1.65;
+  margin: 22px 0 16px;
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+.atelier-header p {
+  max-width: 650px;
+  font-size: 16px;
+  line-height: 2.2;
+  color: #655f50;
+  margin: 0;
+}
+.atelier-header-note {
+  position: absolute;
+  inset-inline-start: 32px;
+  bottom: 28px;
+  font: 10px/1.6 Arial;
+  letter-spacing: 0.15em;
+  opacity: 0.65;
+}
+.atelier-header > .atelier-botanical {
+  inset-inline-end: auto;
+  left: 0;
+  width: 33%;
+  opacity: 0.22;
+}
+.atelier-header > .atelier-honey {
+  mask-image: linear-gradient(90deg, #000, transparent);
+}
+.collection-page .atelier-header {
+  background: #17271f;
+  color: #fff5de;
+}
+.collection-page .atelier-header .eyebrow,
+.collection-page .atelier-header p {
+  color: #d5c6a4;
+}
+.category-page .atelier-header {
+  background: #e4e8d9;
+}
+.category-page .atelier-header > .atelier-botanical {
+  transform: rotate(-15deg);
+  left: -20px;
+  bottom: -30px;
+}
+.journal-page .atelier-header {
+  background: #eae0cb;
+}
+.journal-page .atelier-header h1 {
+  font-size: clamp(32px, 4vw, 60px);
+}
+.page-service .atelier-header,
+.page-management .atelier-header {
+  min-height: 180px;
+  padding: 32px 40px;
+  margin-bottom: 32px;
+}
+.page-service .atelier-header h1,
+.page-management .atelier-header h1 {
+  font-size: 32px;
+  margin-block: 12px;
+}
+.page-service .atelier-header-note,
+.page-management .atelier-header-note {
+  display: none;
+}
+.page-service .atelier-header > .atelier-botanical {
+  width: 140px;
+}
+.page-management .atelier-header .atelier-honey,
+.page-management .atelier-header .atelier-botanical {
+  display: none;
+}
+.route-stage {
+  position: relative;
+  min-width: 0;
+}
+.route-content {
+  min-width: 0;
+}
+.route-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  background: #121c17;
+  opacity: 0;
+  visibility: hidden;
+  color: #c9b67f;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.route-veil > span {
+  font: 11px Arial;
+  letter-spacing: 0.2em;
+}
+.route-veil .atelier-botanical {
+  width: 26%;
+  opacity: 0.12;
+}
+.route-exit .route-content {
+  opacity: 0.2;
+  filter: blur(2px);
+  transition:
+    opacity 140ms ease,
+    filter 140ms ease;
+}
+.route-exit .route-veil {
+  opacity: 0.08;
+  visibility: visible;
+  transition: opacity 140ms;
+}
+.route-enter .route-content {
+  animation: atelier-page-enter 620ms var(--atelier-ease) both;
+}
+.route-enter .route-veil {
+  animation: atelier-veil 620ms var(--atelier-ease) both;
+}
+.route-enter .route-veil .atelier-botanical {
+  animation: atelier-pattern 620ms var(--atelier-ease);
+}
+/* No transform on route-content: the Home sticky viewport keeps its original containing block. */
+@keyframes atelier-page-enter {
+  from {
+    opacity: 0.25;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+@keyframes atelier-veil {
+  from {
+    visibility: visible;
+    opacity: 0.08;
+  }
+  to {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+@keyframes atelier-pattern {
+  from {
+    translate: -16px 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+.motion-enabled .reveal-ready {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition:
+    opacity var(--atelier-reveal) var(--atelier-ease) var(--reveal-delay, 0ms),
+    transform var(--atelier-reveal) var(--atelier-ease) var(--reveal-delay, 0ms);
+}
+.motion-enabled .reveal-ready.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+.motion-enabled [data-reveal="label"].reveal-ready {
+  transform: none;
+}
+.motion-enabled [data-reveal="image"].reveal-ready {
+  transform: none;
+  clip-path: inset(0 0 12% 0);
+  transition:
+    clip-path 1050ms var(--atelier-ease),
+    opacity 900ms var(--atelier-ease);
+}
+.motion-enabled [data-reveal="image"].reveal-visible {
+  clip-path: inset(0);
+}
+.atelier-image {
+  position: relative;
+  overflow: hidden;
+  background: #e4ddcc;
+}
+.atelier-image > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: translate3d(0, var(--drift-y, 0px), 0) scale(1.06);
+}
+.atelier-spotlight {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.atelier-spotlight:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--spot-x, 50%) var(--spot-y, 35%),
+    #efcf7b16,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+.atelier-spotlight img {
+  transform: translate(var(--tilt-x, 0px), var(--tilt-y, 0px));
+  transition: transform 600ms var(--atelier-ease);
+}
+.collection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--atelier-line);
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+}
+.collection-toolbar > span {
+  font: 11px Arial;
+  letter-spacing: 0.15em;
+  color: #706247;
+}
+.filter-toggle {
+  border-color: #ab9462;
+  min-width: 210px;
+  justify-content: space-between;
+}
+.filter-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 500ms var(--atelier-ease),
+    opacity 300ms;
+}
+.filter-disclosure.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.filter-disclosure > div {
+  overflow: hidden;
+  min-height: 0;
+}
+.filter-disclosure:not(.is-open) {
+  visibility: hidden;
+}
+.filter-disclosure .filters {
+  border: 0;
+  background: #f1ecdf;
+  padding: 32px;
+  margin-bottom: 36px;
+  gap: 24px;
+}
+.filter-disclosure .filters label {
+  min-width: 180px;
+}
+.filter-disclosure.is-open .filters > label {
+  animation: atelier-filter-in 650ms var(--atelier-ease) both;
+}
+.filter-disclosure.is-open .filters > label:nth-child(2n) {
+  animation-delay: 60ms;
+}
+.filter-disclosure.is-open .filters > label:nth-child(3n) {
+  animation-delay: 120ms;
+}
+@keyframes atelier-filter-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.product-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px 24px;
+}
+.atelier-product {
+  border: 0;
+  border-radius: 0;
+  padding: 0 0 24px;
+  min-width: 0;
+  background: none;
+  border-bottom: 1px solid var(--atelier-line);
+}
+.atelier-product .atelier-product-image {
+  display: block;
+  position: relative;
+  height: auto;
+  aspect-ratio: 4/5;
+  border-radius: 100px 100px 3px 3px;
+  margin: 0 0 24px;
+  overflow: hidden;
+  background: #eee4d0;
+  isolation: isolate;
+}
+.atelier-product-image > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scale(1);
+  transition: transform 700ms var(--atelier-ease);
+}
+.atelier-product-image:after,
+.atelier-article-image:after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    #ffe7a51c 48%,
+    transparent 64%
+  );
+  transform: translateX(90%);
+  transition: transform 900ms var(--atelier-ease);
+  pointer-events: none;
+}
+.image-ornament {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 600ms;
+}
+.image-ornament .atelier-botanical {
+  width: 44%;
+  color: #6c713c;
+  opacity: 0.3;
+}
+.image-caption {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  width: fit-content;
+  background: #14231dec;
+  color: #e7d5a8;
+  padding: 8px 12px;
+  font: 9px/1.5 Arial;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  translate: 0 7px;
+  transition:
+    opacity 500ms,
+    translate 600ms var(--atelier-ease);
+}
+.atelier-product-image:focus-visible .image-caption {
+  opacity: 1;
+  translate: 0 0;
+}
+.product-copy {
+  padding-inline: 2px;
+}
+.product-label {
+  font-size: 12px;
+  color: #73664b;
+  display: block;
+  margin-bottom: 8px;
+}
+.atelier-product h3 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 8px 0 12px;
+  line-height: 1.8;
+}
+.atelier-product p {
+  font-size: 14px;
+  line-height: 2;
+  color: #6b6252;
+  min-height: 4em;
+  margin: 0 0 20px;
+}
+.atelier-product .card-bottom {
+  border-top: 1px solid #bba87b44;
+  padding-top: 18px;
+  align-items: center;
+  gap: 10px;
+}
+.atelier-product .card-bottom strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+.stock-label {
+  display: block;
+  font-size: 11px;
+  color: #63704b;
+  margin-top: 6px;
+}
+.atelier-product .square {
+  border-radius: 50%;
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  background: #ecdfbf55;
+}
+.atelier-product.reveal-ready:not(.reveal-visible) .product-image > img {
+  transform: scale(1.07);
+}
+.atelier-product.reveal-ready .product-copy h3,
+.atelier-product.reveal-ready .card-bottom {
+  transition:
+    opacity 800ms var(--atelier-ease) 120ms,
+    translate 800ms var(--atelier-ease) 120ms;
+}
+.atelier-product.reveal-ready .card-bottom {
+  transition-delay: 180ms;
+}
+.atelier-product.reveal-ready:not(.reveal-visible) .product-copy h3,
+.atelier-product.reveal-ready:not(.reveal-visible) .card-bottom {
+  opacity: 0;
+  translate: 0 12px;
+}
+.atelier-collection {
+  overflow: hidden;
+  isolation: isolate;
+  background: #fff8e9;
+}
+.atelier-collection > .atelier-divider {
+  margin-top: 0;
+  margin-bottom: 56px;
+}
+.atelier-collection > .wrap {
+  position: relative;
+  z-index: 1;
+}
+.atelier-collection > .atelier-botanical {
+  right: -60px;
+  width: 340px;
+  opacity: 0.1;
+}
+.home-v4 .categories > a {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: right;
+  padding: 32px;
+  background: #ffffff03;
+  min-height: 330px;
+  transition: background 600ms;
+}
+.categories > a > .atelier-botanical {
+  width: 55%;
+  color: #cbb575;
+  opacity: 0.12;
+  transition:
+    opacity 700ms,
+    transform 700ms var(--atelier-ease);
+}
+.category-index {
+  font: 10px Arial;
+  letter-spacing: 0.15em;
+  color: #c6b785;
+}
+.home-v4 .categories .hex {
+  background: none !important;
+  box-shadow: none !important;
+  clip-path: none;
+  font-size: 72px;
+  line-height: 1;
+  height: 96px;
+  width: 96px;
+  color: #c5a45f;
+  transition: transform 600ms var(--atelier-ease);
+  margin: 20px 0;
+}
+.categories > a h3 {
+  position: relative;
+}
+.categories > a p {
+  position: relative;
+  font-size: 14px;
+  max-width: 80%;
+  color: #d3ccba;
+}
+.categories > a > span:last-child {
+  font-size: 13px;
+  position: relative;
+  margin-top: auto;
+}
+.editorial-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px 32px;
+  align-items: start;
+}
+.atelier-article {
+  border: 0;
+  border-bottom: 1px solid var(--atelier-line);
+  padding: 0 0 28px;
+  min-width: 0;
+}
+.atelier-article-image {
+  position: relative;
+  display: block;
+  height: 280px;
+  border-radius: 3px !important;
+  overflow: hidden;
+  margin: 0 0 24px;
+  background: #e5dcc7;
+  isolation: isolate;
+}
+.atelier-article-image > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 700ms var(--atelier-ease);
+}
+.atelier-article.reveal-ready:not(.reveal-visible)
+  .atelier-article-image
+  > img {
+  transform: scale(1.08);
+}
+.article-image-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, #101b1466, transparent 45%);
+  pointer-events: none;
+}
+.article-image-label {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  font: 9px Arial;
+  letter-spacing: 0.15em;
+  color: #fff5d9;
+}
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.article-meta .eyebrow {
+  margin: 0;
+  font: 9px/1.8 Arial;
+  letter-spacing: 0.12em;
+  color: #7a6337;
+}
+.article-meta time {
+  font-size: 11px;
+  color: #6d6250;
+}
+.atelier-article h3 {
+  font-size: 24px;
+  line-height: 1.85;
+  font-weight: 500;
+  margin: 16px 0;
+}
+.atelier-article p {
+  font-size: 14px;
+  line-height: 2.1;
+  max-width: 600px;
+  margin: 0 0 16px;
+}
+.editorial-grid > .atelier-article:first-child {
+  grid-row: span 2;
+}
+.editorial-grid > .atelier-article:first-child .article-image {
+  height: 530px;
+}
+.editorial-grid > .atelier-article:first-child h3 {
+  font-size: 30px;
+}
+.editorial-grid > .atelier-article:nth-child(2) .article-image,
+.editorial-grid > .atelier-article:nth-child(3) .article-image {
+  height: 210px;
+}
+.editorial-grid > .atelier-article:nth-child(n + 4) {
+  grid-column: auto;
+}
+.journal-v4 {
+  background: #f0e7d5;
+}
+.journal-v4 .editorial-grid {
+  grid-template-columns: 1.15fr 1fr;
+}
+.journal-v4 .atelier-article:first-child .article-image {
+  height: 500px;
+}
+.product-detail-page .atelier-header {
+  min-height: 230px;
+  padding-block: 36px;
+}
+.product-detail-page .atelier-header h1 {
+  font-size: 38px;
+}
+.product-detail-page .breadcrumbs {
+  font-size: 13px;
+  margin-bottom: 40px;
+  line-height: 2.2;
+}
+.product-detail-page .detail-grid {
+  grid-template-columns: 1.15fr 1fr;
+  gap: 7%;
+  align-items: start;
+}
+.product-gallery {
+  position: sticky;
+  top: 32px;
+}
+.product-detail-page .detail-image {
+  height: auto;
+  aspect-ratio: 1/1.08;
+  background: #eee5d2;
+  border: 1px solid #bca57544;
+  border-radius: 130px 130px 4px 4px;
+}
+.product-detail-page .detail-image > button {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.product-detail-page .detail-image img {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+.product-detail-page .thumbs {
+  gap: 12px;
+  margin-top: 20px;
+}
+.product-detail-page .thumbs button {
+  width: 72px;
+  height: 72px;
+  padding: 3px;
+  background: #f0e8d7;
+  min-width: 0;
+}
+.product-detail-page .thumbs button[aria-pressed="true"] {
+  border-color: #94702b;
+  outline: 1px solid #94702b;
+  outline-offset: 3px;
+}
+.product-information {
+  padding-top: 24px;
+}
+.product-information > .eyebrow {
+  font: 10px Arial;
+  letter-spacing: 0.17em;
+  color: #7c6028;
+}
+.product-information h2 {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.product-information > .atelier-divider {
+  margin: 24px 0;
+}
+.product-information .prose {
+  font-size: 15px;
+  line-height: 2.2;
+}
+.product-information .price {
+  font-size: 28px;
+  color: #725015;
+}
+.product-information > label {
+  margin-top: 24px;
+}
+.product-information input[type="number"] {
+  max-width: 180px;
+}
+.product-information .wide {
+  min-height: 58px;
+}
+.product-information dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 1px solid var(--atelier-line);
+  margin: 24px 0;
+}
+.product-information dt,
+.product-information dd {
+  border-bottom: 1px solid #b7a37644;
+  padding: 12px 0;
+  margin: 0;
+  font-size: 14px;
+}
+.product-information dd {
+  color: #6d6250;
+}
+.product-detail-page .section {
+  border-top: 1px solid var(--atelier-line);
+  margin-top: 64px;
+}
+.product-detail-page .section > .form {
+  max-width: 620px;
+}
+.product-detail-page .modal-backdrop {
+  z-index: 100;
+}
+.article-detail-page .atelier-header {
+  background: #eae1cf;
+}
+.article-detail-page .atelier-header h1 {
+  max-width: 900px;
+  font-size: clamp(28px, 3.3vw, 48px);
+}
+.article-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  margin: 36px 0;
+  color: #665b47;
+}
+.article-intro p {
+  font-size: 17px;
+  line-height: 2.2;
+  max-width: 760px;
+}
+.article-intro time {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.article-detail-page .article-cover {
+  height: 560px;
+  margin-bottom: 32px;
+  border-radius: 3px;
+}
+.atelier-prose {
+  font-size: 17px;
+  line-height: 2.4;
+  max-width: 740px;
+  margin-inline: auto;
+  color: #403c32;
+}
+.atelier-prose > p {
+  margin-block: 32px;
+}
+.atelier-prose h2 {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.9;
+}
+.article-end {
+  border-top: 1px solid var(--atelier-line);
+  padding: 40px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 64px;
+}
+.article-end > span {
+  font: 11px Arial;
+  letter-spacing: 0.2em;
+  color: #80683a;
+}
+.story-chapters > .content-cover {
+  height: 500px;
+}
+.story-chapter {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 7%;
+  padding: 64px 48px;
+  background: #f0eadc;
+  min-height: 280px;
+}
+.story-chapter > .chapter-number {
+  font: 11px Arial;
+  letter-spacing: 0.14em;
+  color: #876c36;
+  padding-top: 14px;
+}
+.story-chapter > div:not(.chapter-number) {
+  position: relative;
+  z-index: 1;
+  max-width: 740px;
+}
+.story-chapter h2 {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.8;
+}
+.story-chapter p {
+  font-size: 17px;
+  line-height: 2.5;
+  margin: 0;
+}
+.story-chapter .atelier-botanical {
+  width: 23%;
+  opacity: 0.1;
+  left: 0;
+  right: auto;
+}
+.story-chapter.chapter-dark {
+  background: #1b2c22;
+  color: #f0e9d6;
+}
+.story-chapter.chapter-dark .chapter-number {
+  color: #d0b77d;
+}
+.story-chapters > .button {
+  margin: 24px auto 0;
+  display: flex;
+  width: fit-content;
+}
+.content-page .faq-list details {
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--atelier-line);
+  background: transparent;
+  padding: 0 8px;
+  margin-block: 0;
+}
+.content-page .faq-list summary {
+  font-size: 17px;
+  min-height: 64px;
+}
+.content-page .faq-list p {
+  font-size: 15px;
+  line-height: 2.2;
+}
+.atelier-footer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #101b15;
+  padding-top: 80px;
+}
+.atelier-footer > .atelier-honey {
+  opacity: 0.04;
+  color: #d4c18d;
+}
+.atelier-footer > .atelier-botanical {
+  color: #d4c18d;
+  opacity: 0.1;
+  width: 25%;
+  inset-inline-end: 2%;
+}
+.footer-finale {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 64px;
+}
+.footer-finale > .eyebrow {
+  font: 10px Arial;
+  letter-spacing: 0.23em;
+  color: #cbb57c;
+}
+.footer-finale h2 {
+  font-size: clamp(28px, 3.3vw, 48px);
+  font-weight: 500;
+  line-height: 1.8;
+  margin: 20px 0;
+}
+.footer-finale .atelier-divider {
+  max-width: 280px;
+  margin-top: 32px;
+}
+.atelier-footer .footer-grid,
+.atelier-footer .footer-bottom {
+  position: relative;
+  z-index: 1;
+}
+.atelier-footer .muted {
+  color: #b7b1a2;
+}
+.atelier-footer .footer-grid {
+  gap: 40px;
+}
+.atelier-footer input {
+  background: #fffcf508 !important;
+  color: #f8f1df !important;
+  border-color: #b6a16c !important;
+  box-shadow: none !important;
+}
+.atelier-footer input::placeholder {
+  color: #bdb3a0;
+}
+.atelier-footer .check {
+  font-size: 12px;
+}
+.atelier-footer a:not(.wordmark) {
+  width: fit-content;
+  min-height: 30px;
+}
+.atelier-footer .footer-bottom {
+  font-size: 12px;
+}
+.empty {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 72px 24px;
+  background: #f2ecdf;
+  border: 1px solid var(--atelier-line);
+  text-align: center;
+}
+.empty > h3,
+.empty > p,
+.empty-mark {
+  position: relative;
+  z-index: 1;
+}
+.empty > .atelier-botanical {
+  width: 200px;
+  opacity: 0.12;
+}
+.empty .empty-mark {
+  font-size: 42px;
+  color: #96793b;
+  background: none;
+  clip-path: none;
+  display: block;
+  width: auto;
+  height: auto;
+}
+.branded-fallback {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  background: #eee6d4;
+  color: #785f2d;
+}
+.branded-fallback > .atelier-botanical {
+  width: 60%;
+  opacity: 0.2;
+}
+.branded-fallback > span {
+  position: relative;
+  font: 24px Georgia;
+  letter-spacing: 0.2em;
+}
+.branded-fallback small {
+  display: block;
+  font: 8px Arial;
+  letter-spacing: 0.23em;
+  margin-top: 10px;
+  text-align: center;
+}
+.branded-fallback i {
+  width: 64px;
+  height: 1px;
+  background: #a88a48;
+  margin: 20px 0;
+}
+.branded-fallback p {
+  position: relative;
+  font-size: 12px !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  color: #6e6148 !important;
+}
+.loading {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  padding: 24px 0;
+}
+.loading > .skeleton-card {
+  height: auto;
+  max-width: none;
+  background: none;
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.skeleton-card > span {
+  display: block;
+  min-height: 14px;
+  width: 70%;
+  background: linear-gradient(100deg, #e8dfcd 20%, #f6efdf 45%, #e8dfcd 70%);
+  background-size: 220% 100%;
+  animation: atelier-shimmer 3.2s ease-in-out infinite;
+}
+.skeleton-card > .skeleton-image {
+  aspect-ratio: 4/5;
+  width: 100%;
+  border-radius: 80px 80px 2px 2px;
+}
+.skeleton-card > span:last-child {
+  width: 40%;
+}
+@keyframes atelier-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.atelier-page .text-button,
+.atelier-footer a:not(.wordmark) {
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: right bottom;
+  background-size: 0 1px;
+  background-repeat: no-repeat;
+  transition:
+    background-size 500ms var(--atelier-ease),
+    color 240ms;
+}
+.atelier-page .text-button:hover,
+.atelier-footer a:not(.wordmark):hover {
+  background-size: 100% 1px;
+}
+.atelier-page button,
+.atelier-page .button {
+  transition:
+    transform 240ms var(--atelier-ease),
+    background 240ms,
+    border-color 240ms,
+    box-shadow 240ms;
+}
+.atelier-page button:not(:disabled):hover,
+.atelier-page .button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px -15px #a47827;
+}
+.toast {
+  border-inline-start: 3px solid #c4a35b;
+  animation: atelier-filter-in 400ms var(--atelier-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .atelier-product-image:hover > img {
+    transform: scale(1.045);
+  }
+  .atelier-product-image:hover:after,
+  .atelier-article-image:hover:after {
+    transform: translateX(-90%);
+  }
+  .atelier-product-image:hover .image-ornament {
+    opacity: 1;
+  }
+  .atelier-product-image:hover .image-caption {
+    opacity: 1;
+    translate: 0 0;
+  }
+  .atelier-article-image:hover > img {
+    transform: scale(1.05);
+  }
+  .categories > a:hover .hex {
+    transform: rotate(8deg) scale(1.04);
+  }
+  .categories > a:hover > .atelier-botanical {
+    opacity: 0.24;
+    transform: translateY(-6px);
+  }
+  .home-v4 .categories > a:hover {
+    background: #c9ae5c0b;
+  }
+}
+@media (min-width: 1440px) {
+  .atelier-page {
+    max-width: 1280px;
+    width: 88%;
+  }
+  .atelier-header {
+    padding: 72px 64px;
+    min-height: 340px;
+  }
+}
+@media (max-width: 1200px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .editorial-grid > .atelier-article:first-child .article-image {
+    height: 440px;
+  }
+  .atelier-header {
+    padding: 48px 40px;
+  }
+  .atelier-footer .footer-grid {
+    gap: 24px;
+  }
+}
+@media (max-width: 1024px) {
+  .product-detail-page .detail-grid {
+    gap: 32px;
+    grid-template-columns: 1fr 1fr;
+  }
+  .atelier-product h3 {
+    font-size: 18px;
+  }
+  .editorial-grid {
+    gap: 32px 24px;
+  }
+  .atelier-header h1 {
+    font-size: 38px;
+  }
+  .atelier-footer .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .article-intro {
+    gap: 24px;
+  }
+  .article-detail-page .article-cover {
+    height: 440px;
+  }
+  .story-chapter {
+    padding: 48px 32px;
+  }
+}
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 20px;
+  }
+  .atelier-header {
+    min-height: 260px;
+    padding: 40px 28px;
+  }
+  .atelier-header h1 {
+    font-size: 32px;
+  }
+  .atelier-header p {
+    font-size: 15px;
+  }
+  .atelier-header-note {
+    font-size: 8px;
+    bottom: 20px;
+    inset-inline-start: 24px;
+  }
+  .atelier-header-copy {
+    max-width: 90%;
+  }
+  .product-detail-page .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .product-gallery {
+    position: relative;
+    top: auto;
+  }
+  .product-detail-page .detail-image {
+    max-width: 580px;
+    margin: auto;
+  }
+  .product-information {
+    padding-top: 12px;
+  }
+  .article-detail-page .article-cover,
+  .story-chapters > .content-cover {
+    height: 360px;
+  }
+  .article-intro {
+    display: block;
+  }
+  .article-intro p {
+    font-size: 16px;
+  }
+  .article-intro time {
+    display: block;
+    margin-top: 20px;
+  }
+  .atelier-prose {
+    font-size: 16px;
+  }
+  .story-chapter {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .editorial-grid > .atelier-article:first-child .article-image,
+  .journal-v4 .atelier-article:first-child .article-image {
+    height: 400px;
+  }
+  .editorial-grid > .atelier-article:first-child h3 {
+    font-size: 24px;
+  }
+  .atelier-article h3 {
+    font-size: 21px;
+  }
+  .atelier-article-image {
+    height: 220px;
+  }
+}
+@media (max-width: 600px) {
+  .editorial-grid,
+  .journal-v4 .editorial-grid {
+    grid-template-columns: 1fr;
+  }
+  .editorial-grid > .atelier-article:first-child {
+    grid-row: auto;
+  }
+  .editorial-grid > .atelier-article:first-child .article-image,
+  .journal-v4 .atelier-article:first-child .article-image {
+    height: 340px;
+  }
+  .editorial-grid > .atelier-article:nth-child(2) .article-image,
+  .editorial-grid > .atelier-article:nth-child(3) .article-image {
+    height: 240px;
+  }
+  .atelier-footer .footer-grid {
+    gap: 32px 20px;
+  }
+  .atelier-footer .footer-grid > div:first-child,
+  .atelier-footer .footer-grid > form {
+    grid-column: 1/-1;
+  }
+  .atelier-footer {
+    padding-top: 56px;
+  }
+  .footer-finale {
+    margin-bottom: 40px;
+  }
+  .footer-finale h2 {
+    font-size: 27px;
+  }
+  .atelier-footer > .atelier-botanical {
+    width: 50%;
+  }
+  .story-chapter {
+    padding: 40px 24px;
+  }
+  .story-chapter p {
+    font-size: 16px;
+  }
+  .story-chapter h2 {
+    font-size: 25px;
+  }
+  .story-chapter > .atelier-botanical {
+    width: 45%;
+  }
+  .collection-toolbar {
+    gap: 12px;
+  }
+  .collection-toolbar > span {
+    font-size: 9px;
+  }
+  .filter-toggle {
+    min-width: 0;
+    font-size: 13px;
+    padding: 10px 14px;
+    gap: 20px;
+  }
+  .filter-disclosure .filters {
+    padding: 24px 16px;
+    gap: 20px;
+  }
+  .filter-disclosure .filters label {
+    min-width: 100%;
+    width: 100%;
+  }
+  .filter-disclosure .filters .check {
+    min-width: 0;
+    flex: 1 1 40%;
+    font-size: 13px;
+  }
+  .atelier-header .eyebrow {
+    font-size: 9px;
+  }
+  .atelier-header h1 {
+    font-size: 29px;
+    line-height: 1.85;
+  }
+  .atelier-header-copy {
+    max-width: 100%;
+  }
+  .atelier-header p {
+    font-size: 14px;
+    line-height: 2.1;
+  }
+  .atelier-header > .atelier-botanical {
+    opacity: 0.13;
+    width: 55%;
+  }
+  .atelier-header {
+    padding: 32px 24px 60px;
+    min-height: 250px;
+    margin-bottom: 32px;
+  }
+  .page-service .atelier-header,
+  .page-management .atelier-header {
+    padding: 24px;
+    min-height: 150px;
+  }
+  .page-service .atelier-header h1 {
+    font-size: 27px;
+  }
+  .product-detail-page .atelier-header h1 {
+    font-size: 29px;
+  }
+  .atelier-product .atelier-product-image {
+    border-radius: 64px 64px 2px 2px;
+    margin-bottom: 18px;
+  }
+  .atelier-product h3 {
+    font-size: 17px;
+  }
+  .atelier-product .card-bottom {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .atelier-product .card-bottom strong {
+    font-size: 14px;
+  }
+  .atelier-product p {
+    font-size: 13px;
+  }
+  .product-label {
+    font-size: 11px;
+  }
+  .atelier-product .square {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+  .image-caption {
+    display: none;
+  }
+  .article-detail-page .article-cover {
+    height: 280px;
+  }
+  .article-detail-page .atelier-header h1 {
+    font-size: 27px;
+  }
+  .loading {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .loading > .skeleton-card:last-child {
+    display: none;
+  }
+  .home-v4 .categories > a {
+    min-height: 300px;
+    padding: 24px 20px;
+  }
+  .category-index {
+    font-size: 8px;
+  }
+  .categories > a p {
+    max-width: 100%;
+  }
+  .home-v4 .categories .hex {
+    width: 72px;
+    height: 72px;
+    font-size: 56px;
+  }
+  .article-end {
+    gap: 20px;
+  }
+  .article-end > span {
+    font-size: 9px;
+  }
+  .atelier-prose {
+    font-size: 16px;
+    line-height: 2.3;
+  }
+  .atelier-divider {
+    margin-block: 32px;
+  }
+}
+@media (max-width: 380px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+  .atelier-product .atelier-product-image {
+    aspect-ratio: 1/1;
+  }
+  .atelier-product .card-bottom {
+    flex-wrap: nowrap;
+  }
+  .atelier-product h3 {
+    font-size: 20px;
+  }
+  .atelier-product p {
+    font-size: 14px;
+    min-height: 0;
+  }
+  .atelier-product .card-bottom strong {
+    font-size: 16px;
+  }
+  .home-v4 .categories {
+    grid-template-columns: 1fr !important;
+  }
+  .category-index {
+    font-size: 10px;
+  }
+}
+@media (hover: none), (max-width: 760px) {
+  .atelier-spotlight img,
+  .atelier-image > img {
+    transform: none;
+  }
+  .atelier-spotlight:after {
+    display: none;
+  }
+  .image-ornament {
+    display: none;
+  }
+  .atelier-page .button:hover,
+  .atelier-page button:hover {
+    transform: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-veil {
+    display: none !important;
+  }
+  .route-content {
+    animation: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
+  .reveal-ready,
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+  .atelier-product .product-copy h3,
+  .atelier-product .card-bottom {
+    opacity: 1 !important;
+    translate: 0 0 !important;
+  }
+  .atelier-image > img,
+  .atelier-spotlight img,
+  .atelier-product-image > img,
+  .atelier-article-image > img {
+    transform: none !important;
+  }
+  .skeleton-card > span {
+    animation: none !important;
+  }
+  .route-stage * {
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  .route-veil,
+  .atelier-honey,
+  .atelier-botanical {
+    display: none;
+  }
+  .atelier-product .product-copy h3,
+  .atelier-product .card-bottom {
+    opacity: 1 !important;
+    translate: 0 0 !important;
+  }
+}
+.atelier-zoom {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  padding: 64px 20px 24px;
+  border: 0;
+  background: #0d1714ed;
+  color: #fff8e7;
+  overflow: auto;
+}
+.atelier-zoom[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.atelier-zoom::backdrop {
+  background: #0d1714cc;
+}
+.atelier-zoom .zoom-image {
+  display: block;
+  max-width: 94vw;
+  max-height: 82dvh;
+  object-fit: contain;
+}
+.atelier-zoom .modal-close {
+  top: 16px;
+  right: 24px;
+  background: #f4e9cf;
+  color: #26231b;
+  z-index: 1;
+}
+/* Legacy global header uses ivory text; editorial headers declare their own ink. */
+.atelier-header {
+  color: var(--atelier-ink);
+  z-index: 1;
+}
+.collection-page .atelier-header {
+  color: #fff5de;
+}
+.route-enter .atelier-header-copy {
+  animation: atelier-copy-enter 620ms var(--atelier-ease) both;
+}
+@keyframes atelier-copy-enter {
+  from {
+    opacity: 0.4;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.filter-disclosure {
+  transition:
+    grid-template-rows 500ms var(--atelier-ease),
+    opacity 300ms,
+    visibility 0s 500ms;
+}
+.filter-disclosure.is-open {
+  transition:
+    grid-template-rows 500ms var(--atelier-ease),
+    opacity 300ms,
+    visibility 0s;
+}
+.empty .empty-mark:after {
+  display: none;
+}
+.empty .empty-mark {
+  line-height: 1.2;
+  margin: 0 auto 20px;
+  width: 48px;
+  height: 50px;
+}
+/* SVG instead of a Unicode hexagon: identical in the local Persian font and all OSes. */
+.atelier-hex-mark{display:block;width:28px;height:32px}.atelier-divider .atelier-hex-mark{width:18px;height:20px}.empty .atelier-hex-mark{width:42px;height:48px;margin:auto}.categories .hex .atelier-hex-mark{width:60px;height:68px}.empty+.button{margin-top:24px}.atelier-footer a:not(.wordmark){min-height:44px;display:flex;align-items:center}

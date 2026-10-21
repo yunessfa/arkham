@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {fa,money,rows,csrf,api,statuses} from '../src/api.ts';
+test('Persian currency formatting is consistent',()=>{assert.equal(money(100000),fa(100000)+' تومان');assert.match(fa(123),/۱۲۳/);assert.equal(statuses.paid,'پرداخت‌شده')});
+test('List helper handles paginated and array responses',()=>{assert.deepEqual(rows({results:[1]}),[1]);assert.deepEqual(rows([2]),[2]);assert.deepEqual(rows(null),[])});
+test('CSRF reads only matching cookie',()=>{globalThis.document={cookie:'other=wrong; csrftoken=testtoken'};assert.equal(csrf(),'testtoken')});
+test('API sends same-origin session and CSRF',async()=>{globalThis.document={cookie:'csrftoken=testtoken'};let request;globalThis.fetch=async(url,options)=>{request={url,options};return {ok:true,status:200,json:async()=>({ok:true})}};await api('cart/','POST',{variant:1,quantity:2});assert.equal(request.url,'/api/v1/cart/');assert.equal(request.options.credentials,'same-origin');assert.equal(request.options.headers['X-CSRFToken'],'testtoken');assert.deepEqual(JSON.parse(request.options.body),{variant:1,quantity:2})});
+test('API exposes server field errors without raw JSON',async()=>{globalThis.fetch=async()=>({ok:false,status:400,json:async()=>({error:{quantity:['موجودی کافی نیست.']}})});await assert.rejects(api('cart/'),/موجودی کافی نیست/)});
+test('204 response needs no JSON body',async()=>{globalThis.fetch=async()=>({ok:true,status:204});assert.equal(await api('favorites/','DELETE',{product:1}),null)});
+test('Multipart boundary remains browser-owned',async()=>{let headers;globalThis.fetch=async(_,o)=>{headers=o.headers;return {ok:true,status:200,json:async()=>({})}};const data=new FormData();data.set('alt','test');await api('admin/images/','POST',data);assert.equal(headers['Content-Type'],undefined)});

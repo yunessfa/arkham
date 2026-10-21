@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {palettes,readDesign,railProgress,beeTarget} from '../src/design/registry.ts';
+test('Design registry has five unique themes and safe fallback',()=>{assert.equal(palettes.length,5);assert.equal(new Set(palettes.map(p=>p.id)).size,5);for(const p of palettes)assert.equal(readDesign({schemaVersion:1,styleId:p.id}),p.id);for(const x of [null,[],{},'x',{schemaVersion:2,styleId:'rose_nectar'},{schemaVersion:1,styleId:'x'},{schemaVersion:1,styleId:'rose_nectar',css:'x'}])assert.equal(readDesign(x),'golden_gallery')});
+test('Scroll rail progress is bounded and monotone',()=>{let previous=0;for(let i=-100;i<=3000;i+=10){let p=railProgress(-i,3000,900);assert.ok(p>=previous);assert.ok(p>=0&&p<=1);previous=p}assert.equal(railProgress(0,900,900),0);assert.equal(railProgress(-100,800,900),1)});
+test('Bee perch is inside viewport even with offscreen anchors',()=>{for(let i=-1000;i<=3000;i+=50){const t=beeTarget({left:i,right:i+500,top:i,width:500,height:200},1440,900);assert.ok(t.x>=36&&t.x<=1400);assert.ok(t.y>=90&&t.y<=850)}});

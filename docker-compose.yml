@@ -1,0 +1,98 @@
+name: arkham
+x-backend: &backend
+  image: arkham-backend:local
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment:
+    DEBUG: ${DEBUG:-0}
+    DEMO_MODE: ${DEMO_MODE:-0}
+    SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: ${POSTGRES_DB:-arkham}
+    POSTGRES_USER: ${POSTGRES_APP_USER:-arkham_app}
+    POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}
+    REDIS_URL: redis://redis:6379/0
+    ALLOWED_HOSTS: ${ALLOWED_HOSTS:-arkham.ir,www.arkham.ir,localhost,127.0.0.1}
+    CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://arkham.ir,https://www.arkham.ir}
+    PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://arkham.ir}
+    PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-disabled}
+    ZARINPAL_MERCHANT_ID: ${ZARINPAL_MERCHANT_ID:-}
+  volumes:
+    - media:/app/backend/media
+    - static:/app/backend/staticfiles
+  networks: [private]
+services:
+  postgres:
+    image: postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arkham}
+      POSTGRES_USER: ${POSTGRES_USER:-arkham}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-arkham_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8
+    volumes: [database:/var/lib/postgresql/data, ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-arkham.sh:ro]
+    networks: [private]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    command: [redis-server, --save, '', --appendonly, 'no', --maxmemory, 128mb, --maxmemory-policy, allkeys-lru]
+    networks: [private]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+  permissions:
+    <<: *backend
+    user: '0:0'
+    command: [sh, -c, 'mkdir -p /app/backend/media /app/backend/staticfiles && chown -R 10001:10001 /app/backend/media /app/backend/staticfiles && find /app/backend/media /app/backend/staticfiles -type d -exec chmod 755 {} \; && find /app/backend/media /app/backend/staticfiles -type f -exec chmod 644 {} \;']
+    restart: 'no'
+  migrate:
+    <<: *backend
+    command: [sh, -c, 'python manage.py migrate --noinput && python manage.py setup_roles && python manage.py collectstatic --noinput']
+    depends_on:
+      permissions: {condition: service_completed_successfully}
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: 'no'
+  backend:
+    <<: *backend
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; r=urllib.request.Request("http://127.0.0.1:8000/api/v1/health/", headers={"X-Forwarded-Proto":"https","Host":"arkham.ir"}); urllib.request.urlopen(r, timeout=4)']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  frontend:
+    image: arkham-frontend:local
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports: ['127.0.0.1:${HTTP_PORT:-8088}:8080']
+    volumes: [media:/media:ro, static:/static:ro]
+    networks: [private]
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q --spider http://127.0.0.1:8080/fonts/OFL.txt']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+networks:
+  private: {}
+volumes:
+  database: {}
+  media: {}
+  static: {}

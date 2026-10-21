@@ -1,0 +1,32 @@
+[
+  {
+    "image": "library/python:3.13.14-slim-bookworm",
+    "exists": true,
+    "digest": "sha256:67a1e1f215ccda113cfc024e8639049257e88f273898f595b61476d128d387e8",
+    "last_updated": "2026-08-05T08:12:54.923398Z"
+  },
+  {
+    "image": "library/node:24.14.1-alpine3.23",
+    "exists": true,
+    "digest": "sha256:8510330d3eb72c804231a834b1a8ebb55cb3796c3e4431297a24d246b8add4d5",
+    "last_updated": "2026-04-15T23:40:42.474817Z"
+  },
+  {
+    "image": "library/postgres:16.14-alpine",
+    "exists": true,
+    "digest": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+    "last_updated": "2026-07-08T19:08:18.454566Z"
+  },
+  {
+    "image": "library/redis:7.4-alpine",
+    "exists": true,
+    "digest": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+    "last_updated": "2026-09-21T12:05:06.60405Z"
+  },
+  {
+    "image": "nginxinc/nginx-unprivileged:stable-alpine",
+    "exists": true,
+    "digest": "sha256:782bb89768cc87b7f95c18b95baa1af250e5d451f26794f59363540161147c01",
+    "last_updated": "2026-10-14T19:23:01.352852Z"
+  }
+]

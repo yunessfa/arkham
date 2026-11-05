@@ -1,9 +1,6 @@
 import React, {
   useState,
   useEffect,
-  useContext,
-  useRef,
-  createContext,
   Component,
 } from "react";
 import { createRoot } from "react-dom/client";
@@ -18,6 +15,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { api, rows, fa, money, date, statuses } from "./api";
+import { Context, useApp, useData } from "./appContext";
 import "./style.css";
 import ScrollExperience from "./ScrollExperience";
 import StoryHome from "./story/StoryHome";
@@ -36,38 +34,16 @@ import {
 } from "./components/Atelier";
 import {
   ImageReveal,
-  Spotlight,
   PageTransition,
-  ImageZoom,
 } from "./motion/Motion";
 import "./motion/motion.css";
 import "./design/design.css";
 import "./design/refinement.css";
-const Context = createContext<any>({});
-function useApp() {
-  return useContext(Context);
-}
-function useData(path: string) {
-  const [data, setData] = useState<any>(null),
-    [error, setError] = useState(""),
-    [tick, setTick] = useState(0);
-  const previous = useRef(path);
-  useEffect(() => {
-    let alive = true;
-    if (previous.current !== path) {
-      setData(null);
-      previous.current = path;
-    }
-    setError("");
-    api(path)
-      .then((d) => alive && setData(d))
-      .catch((e) => alive && setError(e.message));
-    return () => {
-      alive = false;
-    };
-  }, [path, tick]);
-  return { data, error, reload: () => setTick((t) => t + 1) };
-}
+import { SiteHeader, TabBar, Snackbar, flyToCart, useBootHandoff } from "./v8/Shell";
+import { CollectionPage, ProductPage, ProductCard } from "./v8/Shop";
+import { CartPage, CheckoutPage, LoginPage } from "./v8/Checkout";
+import StoryPage from "./v8/Story";
+import "./v8/v8.css";
 function ErrorBox({ message }: { message: string }) {
   return message ? (
     <p className="error" role="alert">
@@ -170,52 +146,6 @@ function BrandIdentity({ compact = false }: { compact?: boolean }) {
         <span className="brand-persian">ارکام</span>
       </span>
     </span>
-  );
-}
-function Header() {
-  const { session, cart, assets } = useApp(),
-    [open, setOpen] = useState(false);
-  const loc = useLocation();
-  useEffect(() => {
-    setOpen(false);
-  }, [loc.pathname]);
-  return (
-    <header>
-      <div className="wrap topnav">
-        <Link className="wordmark" to="/" aria-label="خانه ارکام">
-          <BrandIdentity />
-        </Link>
-        <button
-          className="menu-toggle ghost"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          فهرست ☰
-        </button>
-        <nav className={open ? "open" : ""} aria-label="ناوبری اصلی">
-          <Link to="/products">فروشگاه</Link>
-          <Link to="/pages/story">داستان ارکام</Link>
-          <Link to="/journal">مجله</Link>
-          <Link to="/contact">تماس با ما</Link>
-        </nav>
-        <div className="nav-actions">
-          {session?.user?.is_staff && (
-            <Link to="/manage" className="manage-shortcut">
-              مدیریت
-            </Link>
-          )}
-          <Link to={session?.authenticated ? "/account" : "/login"}>
-            {session?.authenticated ? "حساب من" : "ورود"}
-          </Link>
-          <Link className="bag" to="/cart">
-            سبد{" "}
-            <b>
-              {fa(cart?.items?.reduce((s: any, i: any) => s + i.quantity, 0))}
-            </b>
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }
 function Footer() {
@@ -433,247 +363,6 @@ function Home() {
     </main>
   );
 }
-function ProductCard({ product: p }: { product: any }) {
-  const v = p.variants?.find((x: any) => x.available > 0) || p.variants?.[0];
-  const { add } = useApp();
-  const [busy, setBusy] = useState(false);
-  return (
-    <article className="product-card atelier-product" data-reveal="card">
-      <Link
-        to={"/products/" + p.slug}
-        className="product-image atelier-product-image"
-      >
-        {p.images?.[0] ? (
-          <img
-            loading="lazy"
-            decoding="async"
-            src={p.images[0].image}
-            alt={p.images[0].alt || p.name}
-          />
-        ) : (
-          <BrandedFallback />
-        )}
-        <span className="image-ornament" aria-hidden="true">
-          <BotanicalDecoration />
-        </span>
-        <span className="image-caption" dir="ltr">
-          EXPLORE THE HONEY ↗
-        </span>
-      </Link>
-      <div className="product-copy">
-        <span className="product-label">
-          {p.category?.name}
-          {v && " / " + fa(v.weight_g) + " گرم"}
-        </span>
-        <h3>
-          <Link to={"/products/" + p.slug}>{p.name}</Link>
-        </h3>
-        <p>
-          {(p.description || "")
-            .replace(
-              "نمونه نمایشی؛ تصویر تولیدشده با هوش مصنوعی و قیمت غیرواقعی. ",
-              "",
-            )
-            .slice(0, 90)}
-        </p>
-        <div className="card-bottom">
-          <div>
-            {v && v.price !== v.current_price && <del>{money(v.price)}</del>}
-            <strong>
-              {v ? money(v.current_price) : "قیمت هنوز تعیین نشده"}
-            </strong>
-            <small className="stock-label">
-              {v?.available > 0 ? "موجود برای سفارش" : "فعلاً ناموجود"}
-            </small>
-          </div>
-          <button
-            className="square"
-            disabled={!v || v.available < 1 || busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await add(v.id);
-              } finally {
-                setBusy(false);
-              }
-            }}
-            aria-label={"افزودن " + p.name + " به سبد"}
-          >
-            {busy ? "…" : "+"}
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-function Products() {
-  const { slug } = useParams();
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [params, setParams] = useSearchParams();
-  const query = new URLSearchParams(params);
-  if (slug) query.set("category", slug);
-  const source = useData("products/?" + query.toString()),
-    categories = useData("categories/");
-  function filter(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const d = new FormData(e.currentTarget),
-      q: any = {};
-    for (const [k, v] of d.entries()) if (v) q[k] = v;
-    setParams(q);
-  }
-  return (
-    <Page
-      title={
-        slug
-          ? rows(categories.data).find((c: any) => c.slug === slug)?.name ||
-            "محصولات دسته‌بندی"
-          : "مجموعه محصولات"
-      }
-      kicker={
-        slug ? "THE COLLECTION / SELECTED BY NATURE" : "THE ARKHAM COLLECTION"
-      }
-      className={slug ? "category-page" : "collection-page"}
-      description={
-        slug
-          ? rows(categories.data).find((c: any) => c.slug === slug)?.description
-          : "هر شیشه، روایتی از یک فصل. مجموعه را با حوصله کشف کنید."
-      }
-    >
-      <div className="collection-toolbar">
-        <span dir="ltr">THE HONEY EDIT</span>
-        <button
-          className="filter-toggle"
-          aria-expanded={filtersOpen}
-          aria-controls="collection-filters"
-          onClick={() => setFiltersOpen((x) => !x)}
-        >
-          فیلتر و ترتیب نمایش{" "}
-          <span aria-hidden="true">{filtersOpen ? "−" : "+"}</span>
-        </button>
-      </div>
-      <div
-        id="collection-filters"
-        className={`filter-disclosure ${filtersOpen ? "is-open" : ""}`}
-        inert={!filtersOpen ? true : undefined}
-        aria-hidden={!filtersOpen}
-      >
-        <div>
-          <form
-            className="filters panel"
-            onSubmit={filter}
-            key={params.toString()}
-          >
-            <label>
-              جست‌وجو
-              <input
-                name="q"
-                defaultValue={params.get("q") || ""}
-                placeholder="نام محصول"
-              />
-            </label>
-            {!slug && (
-              <label>
-                دسته‌بندی
-                <select
-                  name="category"
-                  defaultValue={params.get("category") || ""}
-                >
-                  <option value="">همه</option>
-                  {rows(categories.data).map((c: any) => (
-                    <option key={c.id} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label>
-              حداقل قیمت / تومان
-              <input
-                type="number"
-                min="0"
-                name="min_price"
-                defaultValue={params.get("min_price") || ""}
-              />
-            </label>
-            <label>
-              حداکثر قیمت / تومان
-              <input
-                type="number"
-                min="0"
-                name="max_price"
-                defaultValue={params.get("max_price") || ""}
-              />
-            </label>
-            <label>
-              وزن / گرم
-              <input
-                type="number"
-                min="1"
-                name="weight"
-                defaultValue={params.get("weight") || ""}
-              />
-            </label>
-            <label>
-              مرتب‌سازی
-              <select name="sort" defaultValue={params.get("sort") || "newest"}>
-                <option value="newest">جدیدترین</option>
-                <option value="price">ارزان‌ترین</option>
-                <option value="-price">گران‌ترین</option>
-                <option value="bestselling">پرفروش‌ترین</option>
-              </select>
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                name="available"
-                value="1"
-                defaultChecked={params.get("available") === "1"}
-              />
-              فقط موجود
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                name="sale"
-                value="1"
-                defaultChecked={params.get("sale") === "1"}
-              />
-              تخفیف‌دار
-            </label>
-            <button className="gold">اعمال فیلتر</button>
-            <Link
-              className="text-button"
-              to={slug ? "/category/" + slug : "/products"}
-            >
-              پاک کردن
-            </Link>
-          </form>
-        </div>
-      </div>
-      <DataState source={source}>
-        {(d) =>
-          rows(d).length ? (
-            <>
-              <p className="muted">{fa(d.count)} محصول</p>
-              <div className="product-grid">
-                {rows(d).map((p: any) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-              <Pagination data={d} params={params} setParams={setParams} />
-            </>
-          ) : (
-            <Empty
-              title="محصولی پیدا نشد"
-              text="فیلترها را تغییر دهید یا پس از انتشار محصولات دوباره سر بزنید."
-            />
-          )
-        }
-      </DataState>
-    </Page>
-  );
-}
 function Pagination({
   data,
   params,
@@ -708,232 +397,6 @@ function Pagination({
         </button>
       )}
     </div>
-  );
-}
-function ProductDetail() {
-  const { slug } = useParams(),
-    src = useData("products/" + slug + "/");
-  return (
-    <DataState source={src}>
-      {(p) => <ProductBody key={p.id} p={p} />}
-    </DataState>
-  );
-}
-function ProductBody({ p }: { p: any }) {
-  const { add, run, session } = useApp(),
-    [variant, setVariant] = useState(p.variants?.[0]?.id),
-    [qty, setQty] = useState(1),
-    [image, setImage] = useState(p.images?.[0]),
-    [zoom, setZoom] = useState(false);
-  const v = p.variants.find((x: any) => x.id == variant),
-    reviews = useData("reviews/?product=" + p.id),
-    related = useData("products/?category=" + p.category.slug);
-  return (
-    <Page
-      title={p.name}
-      kicker="THE COLLECTION / A CLOSER LOOK"
-      className="product-detail-page"
-      description={p.category?.name}
-    >
-      <div className="breadcrumbs">
-        <Link to="/products">فروشگاه</Link> /{" "}
-        <Link to={"/category/" + p.category.slug}>{p.category.name}</Link> /{" "}
-        {p.name}
-      </div>
-      <div className="detail-grid">
-        <div className="product-gallery" data-reveal="image">
-          <Spotlight className="detail-image">
-            {image ? (
-              <button
-                onClick={() => setZoom(true)}
-                aria-label="بزرگ‌نمایی تصویر"
-              >
-                <img
-                  src={image.image}
-                  alt={image.alt || p.name}
-                  decoding="async"
-                />
-              </button>
-            ) : (
-              <BrandedFallback label="تصویر محصول هنوز منتشر نشده است" />
-            )}
-          </Spotlight>
-          <div className="thumbs">
-            {p.images.map((i: any) => (
-              <button
-                key={i.id}
-                onClick={() => setImage(i)}
-                aria-pressed={image?.id === i.id}
-                aria-label={
-                  i.alt || "نمای محصول " + fa(p.images.indexOf(i) + 1)
-                }
-              >
-                <img src={i.image} alt={i.alt} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="product-information" data-reveal-group>
-          <span className="eyebrow" dir="ltr" data-reveal="label">
-            ARKHAM / THE HONEY ATELIER
-          </span>
-          <h2 data-reveal="heading">{p.name}</h2>
-          <CinematicDivider />
-          <p className="prose" data-reveal="heading">
-            {p.description}
-          </p>
-          <label>
-            وزن / گونه
-            <select
-              value={variant || ""}
-              onChange={(e) => setVariant(Number(e.target.value))}
-            >
-              {p.variants.map((x: any) => (
-                <option key={x.id} value={x.id}>
-                  {fa(x.weight_g)} گرم
-                </option>
-              ))}
-            </select>
-          </label>
-          {v && (
-            <>
-              <p className="price">
-                {v.price !== v.current_price && <del>{money(v.price)}</del>}{" "}
-                {money(v.current_price)}
-              </p>
-              <p>
-                {v.available > 0 ? "موجودی: " + fa(v.available) : "ناموجود"}
-              </p>
-              <label>
-                تعداد
-                <input
-                  type="number"
-                  min="1"
-                  max={Math.min(v.available, 99)}
-                  value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
-                />
-              </label>
-              <button
-                className="gold wide"
-                disabled={
-                  !v.available || qty < 1 || qty > v.available || qty > 99
-                }
-                onClick={() => add(v.id, qty)}
-              >
-                افزودن به سبد خرید
-              </button>
-            </>
-          )}
-          <button
-            className="text-button"
-            onClick={() =>
-              session?.authenticated
-                ? run(
-                    () => api("favorites/", "POST", { product: p.id }),
-                    "به علاقه‌مندی‌ها افزوده شد",
-                  )
-                : run(() => Promise.reject(Error("ابتدا وارد حساب خود شوید.")))
-            }
-          >
-            ♡ افزودن به علاقه‌مندی‌ها
-          </button>
-          {Object.keys(p.specifications || {}).length > 0 && (
-            <h2>مشخصات محصول</h2>
-          )}
-          <dl>
-            {Object.entries(p.specifications || {}).map(([k, v]) => (
-              <React.Fragment key={k}>
-                <dt>{k}</dt>
-                <dd>{String(v)}</dd>
-              </React.Fragment>
-            ))}
-          </dl>
-          {p.storage && (
-            <>
-              <h3>شرایط نگهداری</h3>
-              <p className="prose">{p.storage}</p>
-            </>
-          )}
-        </div>
-      </div>
-      <section className="section">
-        <h2>نظر خریداران</h2>
-        <DataState source={reviews}>
-          {(d) =>
-            rows(d).length ? (
-              rows(d).map((r: any) => (
-                <blockquote key={r.id}>
-                  <strong>
-                    {r.author} · {fa(r.rating)} از ۵
-                  </strong>
-                  <p>{r.text}</p>
-                </blockquote>
-              ))
-            ) : (
-              <p>هنوز نظر تأییدشده‌ای ثبت نشده است.</p>
-            )
-          }
-        </DataState>
-        {session?.authenticated && (
-          <AsyncForm
-            submit={async (d) => {
-              await api("reviews/", "POST", {
-                product: p.id,
-                text: d.text,
-                rating: Number(d.rating),
-              });
-              reviews.reload();
-            }}
-            success="نظر شما پس از بررسی منتشر خواهد شد."
-          >
-            <label>
-              امتیاز
-              <select name="rating">
-                {[5, 4, 3, 2, 1].map((n) => (
-                  <option key={n} value={n}>
-                    {fa(n)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              نظر شما
-              <textarea name="text" required maxLength={2000} />
-            </label>
-            <small>ثبت نظر فقط برای خریداران محصول امکان‌پذیر است.</small>
-            <button>ثبت نظر</button>
-          </AsyncForm>
-        )}
-      </section>
-      <CinematicDivider />
-      <div className="section-head">
-        <div>
-          <span className="eyebrow" dir="ltr">
-            DISCOVER MORE
-          </span>
-          <h2>روایت‌های دیگر مجموعه</h2>
-        </div>
-        <Link to="/products" className="text-button">
-          کشف مجموعه ←
-        </Link>
-      </div>
-      <div className="product-grid">
-        {rows(related.data)
-          .filter((x: any) => x.id !== p.id)
-          .slice(0, 4)
-          .map((x: any) => (
-            <ProductCard key={x.id} product={x} />
-          ))}
-      </div>
-      {zoom && image && (
-        <ImageZoom
-          src={image.image}
-          alt={image.alt || p.name}
-          onClose={() => setZoom(false)}
-        />
-      )}
-    </Page>
   );
 }
 function AsyncForm({
@@ -979,90 +442,6 @@ function AsyncForm({
     </form>
   );
 }
-function Login() {
-  const [register, setRegister] = useState(false);
-  const { refresh } = useApp(),
-    nav = useNavigate();
-  return (
-    <Page title={register ? "ساخت حساب کاربری" : "خوش آمدید"}>
-      <div className="narrow">
-        <div className="auth-brand">
-          <BrandIdentity compact />
-        </div>
-        <AsyncForm
-          key={String(register)}
-          submit={async (d) => {
-            await api(
-              "accounts/" + (register ? "register" : "login") + "/",
-              "POST",
-              d,
-            );
-            await refresh();
-            nav("/account");
-          }}
-        >
-          <label>
-            نام کاربری
-            <input
-              name="username"
-              autoComplete="username"
-              required
-              pattern="[a-zA-Z0-9_.@+\-]{3,150}"
-              dir="ltr"
-            />
-          </label>
-          {register && (
-            <>
-              <label>
-                نام
-                <input
-                  name="first_name"
-                  autoComplete="given-name"
-                  required
-                  maxLength={100}
-                />
-              </label>
-              <label>
-                ایمیل
-                <input
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  dir="ltr"
-                />
-              </label>
-            </>
-          )}
-          <label>
-            رمز عبور
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={register ? 12 : 1}
-              maxLength={128}
-              autoComplete={register ? "new-password" : "current-password"}
-              dir="ltr"
-            />
-          </label>
-          {register && (
-            <p className="muted">
-              حداقل ۱۲ نویسه؛ رمز متداول یا کاملاً عددی پذیرفته نمی‌شود.
-            </p>
-          )}
-          <button className="gold wide">{register ? "ثبت‌نام" : "ورود"}</button>
-        </AsyncForm>
-        <button className="text-button" onClick={() => setRegister(!register)}>
-          {register ? "حساب دارید؟ ورود" : "حساب ندارید؟ ثبت‌نام"}
-        </button>
-        <p className="muted">
-          بازیابی رمز در این نسخه از طریق پشتیبانی فروشگاه انجام می‌شود.
-        </p>
-      </div>
-    </Page>
-  );
-}
 function Require({
   children,
   staff = false,
@@ -1071,12 +450,13 @@ function Require({
   staff?: boolean;
 }) {
   const { session } = useApp();
+  const location = useLocation();
   if (!session) return <Loading />;
   if (!session.authenticated)
     return (
       <Page title="ورود به حساب">
         <p>برای ادامه وارد حساب خود شوید.</p>
-        <Link to="/login" className="button gold">
+        <Link to={"/login?next=" + encodeURIComponent(location.pathname + location.search)} className="button gold">
           ورود / ثبت‌نام
         </Link>
       </Page>
@@ -1088,89 +468,6 @@ function Require({
       </Page>
     );
   return <>{children}</>;
-}
-function Cart() {
-  const { cart, refreshCart, run } = useApp();
-  return (
-    <Page title="سبد خرید">
-      <p className="muted">
-        قیمت و موجودی در لحظه ایجاد سفارش مجدداً در سرور بررسی می‌شود.
-      </p>
-      {!cart ? (
-        <Loading />
-      ) : !cart.items.length ? (
-        <>
-          <Empty
-            title="سبد شما خالی است"
-            text="برای شروع، مجموعه محصولات را ببینید."
-          />
-          <Link className="button gold" to="/products">
-            رفتن به فروشگاه ←
-          </Link>
-        </>
-      ) : (
-        <div className="checkout-grid">
-          <div>
-            {cart.items.map((i: any) => (
-              <div className="cart-row panel" key={i.variant}>
-                <div>
-                  <h3>
-                    <Link to={"/products/" + i.slug}>{i.product}</Link>
-                  </h3>
-                  <span>
-                    {fa(i.weight_g)} گرم · {money(i.price)}
-                  </span>
-                </div>
-                <label>
-                  تعداد
-                  <input
-                    type="number"
-                    min="0"
-                    max="99"
-                    value={i.quantity}
-                    onChange={(e) =>
-                      run(async () => {
-                        await api("cart/", "POST", {
-                          variant: i.variant,
-                          quantity: Number(e.target.value),
-                        });
-                        refreshCart();
-                      })
-                    }
-                  />
-                </label>
-                <strong>{money(i.line_total)}</strong>
-                <button
-                  className="text-button"
-                  onClick={() =>
-                    run(async () => {
-                      await api("cart/", "POST", {
-                        variant: i.variant,
-                        quantity: 0,
-                      });
-                      refreshCart();
-                    })
-                  }
-                >
-                  حذف
-                </button>
-              </div>
-            ))}
-          </div>
-          <aside className="panel summary">
-            <h2>خلاصه سبد</h2>
-            <p>
-              جمع محصولات <strong>{money(cart.subtotal)}</strong>
-            </p>
-            <small>هزینه ارسال و تخفیف هنگام تسویه محاسبه می‌شود.</small>
-            <Link className="button gold wide" to="/checkout">
-              ادامه خرید ←
-            </Link>
-          </aside>
-        </div>
-      )}
-    </Page>
-  );
 }
 function AddressForm({ reload }: { reload: () => void }) {
   return (
@@ -1357,6 +654,10 @@ function CheckoutBody() {
       )}
     </Page>
   );
+}
+function CheckoutRoute() {
+  const [params] = useSearchParams();
+  return params.get("order") ? <Checkout /> : <CheckoutPage />;
 }
 function OrderDetail() {
   const { id } = useParams();
@@ -1615,10 +916,10 @@ function FavoriteBody() {
       <DataState source={src}>
         {(d) =>
           d.length ? (
-            <div className="product-grid">
-              {d.map((p: any) => (
+            <div className="shop-grid">
+              {d.map((p: any, i: number) => (
                 <div key={p.id}>
-                  <ProductCard product={p} />
+                  <ProductCard product={p} index={i} />
                   <button
                     className="text-button"
                     onClick={() =>
@@ -2611,6 +1912,7 @@ function AdminOrders() {
 function App() {
   const assetSource = useData("assets/");
   const assets = rows(assetSource.data);
+  const siteContent = useData("content/");
   const [session, setSession] = useState<any>(null),
     [cart, setCart] = useState<any>(null),
     [toast, setToast] = useState(""),
@@ -2623,6 +1925,7 @@ function App() {
   useEffect(() => {
     refresh().catch((e) => setBootError(e.message));
   }, []);
+  useBootHandoff(session !== null || !!bootError);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 5500);
@@ -2647,6 +1950,7 @@ function App() {
         quantity: Math.min(99, old + quantity),
       });
       await refreshCart();
+      flyToCart();
       return true;
     }, "به سبد خرید افزوده شد.");
   return (
@@ -2657,7 +1961,7 @@ function App() {
         رفتن به محتوای اصلی
       </a>
       <ScrollExperience />
-      <Header />
+      <SiteHeader brand={<BrandIdentity />} session={session} cart={cart} socials={rows(siteContent.data).find((c: any) => c.key === "contact")?.settings?.socials || []} />
       {session?.demo_mode && (
         <aside className="demo-notice">
           <span>DEMO</span> نسخه نمایشی — تصاویر و قیمت‌ها نمونه‌اند؛ پرداخت
@@ -2695,12 +1999,13 @@ function App() {
             {(displayLocation) => (
               <Routes location={displayLocation}>
                 <Route path="/" element={<Home />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/category/:slug" element={<Products />} />
-                <Route path="/products/:slug" element={<ProductDetail />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/login" element={<Login />} />
+                <Route path="/products" element={<CollectionPage />} />
+                <Route path="/category/:slug" element={<CollectionPage />} />
+                <Route path="/products/:slug" element={<ProductPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutRoute />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/pages/story" element={<StoryPage />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
                 <Route path="/favorites" element={<Favorites />} />
@@ -2717,14 +2022,8 @@ function App() {
         </Boundary>
       </div>
       <Footer />
-      {toast && (
-        <div className="toast" role="status">
-          <span>{toast}</span>
-          <button aria-label="بستن پیام" onClick={() => setToast("")}>
-            ×
-          </button>
-        </div>
-      )}
+      <TabBar session={session} cart={cart} />
+      {toast && <Snackbar key={toast} text={toast} onClose={() => setToast("")} />}
     </Context.Provider>
   );
 }

@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from django.conf import settings
 from .models import *
 from .payments import gateway, GatewayUnavailable, GatewayRejected
+from .text import latin_digits, normalize_phone
 
 
 def audit(actor, action, obj, detail=None):
@@ -46,6 +47,104 @@ def merge_cart(user, session_key):
             item.cart = target
             item.save()
     guest.delete()
+
+
+def find_coupon(code, lock=False):
+    code = latin_digits(code).strip()
+    if not code:
+        return None
+    now = timezone.now()
+    qs = Coupon.objects.select_for_update() if lock else Coupon.objects
+    # Codes are stored upper-case by the panel; iexact also covers django-admin rows.
+    return qs.filter(
+        code__iexact=code, active=True, starts_at__lte=now, ends_at__gt=now
+    ).first()
+
+
+def apply_coupon(user, code, subtotal, lock=False):
+    """Return (coupon, discount). Raises ValidationError with a customer message."""
+    if not (code or "").strip():
+        return None, Decimal(0)
+    coupon = find_coupon(code, lock=lock)
+    if not coupon:
+        raise ValidationError("کد تخفیف معتبر نیست.")
+    if coupon.minimum > subtotal:
+        raise ValidationError(
+            "این کد برای خرید از "
+            + f"{int(coupon.minimum):,}"
+            + " تومان به بالا فعال می‌شود."
+        )
+    used = Order.objects.filter(coupon=coupon).exclude(status=Order.Status.CANCELLED)
+    if used.count() >= coupon.usage_limit or (
+        user is not None
+        and user.is_authenticated
+        and used.filter(user=user).count() >= coupon.per_user_limit
+    ):
+        raise ValidationError("سقف استفاده از تخفیف تکمیل شده است.")
+    if coupon.kind == "percent":
+        if coupon.value > 100:
+            raise ValidationError("تنظیمات تخفیف نامعتبر است.")
+        return coupon, (subtotal * coupon.value / 100).quantize(Decimal("1"))
+    return coupon, min(subtotal, coupon.value)
+
+
+def quote_cart(user, cart, shipping_id=None, address_id=None, code=""):
+    """Read-only price preview for checkout. Never reserves stock or uses a coupon.
+
+    The final amount is still recomputed under row locks by create_order.
+    """
+    items = list(
+        cart.items.select_related("variant__product__category").order_by("variant_id")
+    )
+    subtotal = Decimal(0)
+    problems = []
+    for i in items:
+        v = i.variant
+        if not (v.active and v.product.active and v.product.category.active):
+            problems.append(v.product.name + " دیگر قابل خرید نیست.")
+        elif v.available < i.quantity:
+            problems.append(
+                "از " + v.product.name + " فقط " + str(max(0, v.available)) + " عدد موجود است."
+            )
+        subtotal += v.current_price * i.quantity
+    shipping_cost = None
+    shipping_error = ""
+    if shipping_id:
+        method = ShippingMethod.objects.filter(pk=shipping_id, active=True).first()
+        if not method:
+            shipping_error = "روش ارسال معتبر نیست."
+        else:
+            shipping_cost = method.cost
+            if address_id and method.provinces and user and user.is_authenticated:
+                a = Address.objects.filter(pk=address_id, user=user).first()
+                if a and a.province not in method.provinces:
+                    shipping_error = "این روش ارسال به استان " + a.province + " نمی‌رسد."
+    coupon_state = {"code": "", "valid": False, "message": ""}
+    discount = Decimal(0)
+    if (code or "").strip():
+        try:
+            coupon, discount = apply_coupon(user, code, subtotal)
+            coupon_state = {
+                "code": coupon.code,
+                "valid": True,
+                "message": "کد تخفیف اعمال شد.",
+            }
+        except ValidationError as exc:
+            detail = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+            coupon_state = {"code": code.strip(), "valid": False, "message": str(detail)}
+    total = subtotal - discount + (shipping_cost or 0)
+    return {
+        "count": sum(i.quantity for i in items),
+        "subtotal": str(subtotal),
+        "discount": str(discount),
+        "shipping": None if shipping_cost is None else str(shipping_cost),
+        "total": str(max(Decimal(0), total)),
+        "coupon": coupon_state,
+        "shipping_error": shipping_error,
+        "problems": problems,
+        "ready": bool(items) and not problems and shipping_cost is not None and not shipping_error,
+        "currency": "IRT",
+    }
 
 
 @transaction.atomic
@@ -90,36 +189,8 @@ def create_order(user, cart, address_id, shipping_id, key, code=""):
                 "موجودی محصول کافی نیست یا محصول غیرفعال است: " + v.product.name
             )
         subtotal += v.current_price * i.quantity
-    coupon = None
-    discount = Decimal(0)
     now = timezone.now()
-    if code:
-        coupon = (
-            Coupon.objects.select_for_update()
-            .filter(
-                code=code.strip().upper(),
-                active=True,
-                starts_at__lte=now,
-                ends_at__gt=now,
-            )
-            .first()
-        )
-        if not coupon or coupon.minimum > subtotal:
-            raise ValidationError("کد تخفیف معتبر نیست.")
-        used = Order.objects.filter(coupon=coupon).exclude(
-            status=Order.Status.CANCELLED
-        )
-        if (
-            used.count() >= coupon.usage_limit
-            or used.filter(user=user).count() >= coupon.per_user_limit
-        ):
-            raise ValidationError("سقف استفاده از تخفیف تکمیل شده است.")
-        if coupon.kind == "percent":
-            if coupon.value > 100:
-                raise ValidationError("تنظیمات تخفیف نامعتبر است.")
-            discount = (subtotal * coupon.value / 100).quantize(Decimal("1"))
-        else:
-            discount = min(subtotal, coupon.value)
+    coupon, discount = apply_coupon(user, code, subtotal, lock=True)
     snapshot = {
         k: getattr(address, k)
         for k in ["recipient", "phone", "province", "city", "street", "postal_code"]
@@ -284,3 +355,96 @@ def transition(order_id, actor, status, tracking="", note=""):
         user=o.user, text="وضعیت سفارش: " + o.get_status_display()
     )
     return o
+
+
+# ---------------------------------------------------------------- phone login
+import hmac
+import hashlib
+import secrets
+
+
+def _otp_hash(phone, code):
+    return hmac.new(
+        settings.SECRET_KEY.encode(), (phone + ":" + code).encode(), hashlib.sha256
+    ).hexdigest()
+
+
+def issue_login_code(raw_phone):
+    """Create and send a 5-digit code. Returns (phone, code, wait_seconds)."""
+    from . import sms
+
+    phone = normalize_phone(raw_phone)
+    if not phone:
+        raise ValidationError("شمارهٔ موبایل را به شکل ۰۹۱۲۱۲۳۴۵۶۷ وارد کنید.")
+    if not sms.enabled():
+        raise ValidationError("ورود با موبایل هنوز فعال نشده است.")
+    now = timezone.now()
+    recent = PhoneOTP.objects.filter(phone=phone, created_at__gte=now - timedelta(hours=1))
+    last = recent.first()
+    if last and (now - last.created_at).total_seconds() < settings.OTP_RESEND_SECONDS:
+        wait = settings.OTP_RESEND_SECONDS - int((now - last.created_at).total_seconds())
+        raise ValidationError("برای ارسال دوبارهٔ کد " + str(wait) + " ثانیه صبر کنید.")
+    if recent.count() >= settings.OTP_MAX_PER_HOUR:
+        raise ValidationError("تعداد درخواست کد زیاد است؛ کمی بعد دوباره تلاش کنید.")
+    code = "".join(secrets.choice("0123456789") for _ in range(5))
+    PhoneOTP.objects.filter(phone=phone, consumed=False).update(consumed=True)
+    PhoneOTP.objects.create(
+        phone=phone,
+        code_hash=_otp_hash(phone, code),
+        expires_at=now + timedelta(seconds=settings.OTP_TTL_SECONDS),
+    )
+    try:
+        sms.send_login_code(phone, code)
+    except sms.SmsUnavailable:
+        PhoneOTP.objects.filter(phone=phone, consumed=False).update(consumed=True)
+        raise ValidationError("ارسال پیامک ممکن نشد؛ چند دقیقهٔ دیگر تلاش کنید.")
+    return phone, code, settings.OTP_RESEND_SECONDS
+
+
+def verify_login_code(raw_phone, raw_code, first_name=""):
+    """Return (user, created). Wrong codes count against the latest active code.
+
+    The attempt counter is committed before the error is raised, so a failed
+    guess is never rolled back by the surrounding request transaction.
+    """
+    from django.contrib.auth import get_user_model
+
+    phone = normalize_phone(raw_phone)
+    code = "".join(ch for ch in latin_digits(raw_code) if ch.isdigit())
+    if not phone or len(code) != 5:
+        raise ValidationError("کد ۵ رقمی را کامل وارد کنید.")
+    error = ""
+    with transaction.atomic():
+        otp = (
+            PhoneOTP.objects.select_for_update()
+            .filter(phone=phone, consumed=False, expires_at__gt=timezone.now())
+            .first()
+        )
+        if not otp or otp.attempts >= settings.OTP_MAX_ATTEMPTS:
+            error = "کد منقضی شده است؛ کد جدید بگیرید."
+        elif not hmac.compare_digest(otp.code_hash, _otp_hash(phone, code)):
+            otp.attempts += 1
+            otp.consumed = otp.attempts >= settings.OTP_MAX_ATTEMPTS
+            otp.save(update_fields=["attempts", "consumed"])
+            error = "کد واردشده درست نیست."
+        else:
+            otp.consumed = True
+            otp.save(update_fields=["consumed"])
+    if error:
+        raise ValidationError(error)
+    with transaction.atomic():
+        User = get_user_model()
+        user = User.objects.select_for_update().filter(username=phone).first()
+        created = False
+        if user is None:
+            user = User(username=phone, first_name=(first_name or "").strip()[:100])
+            user.set_unusable_password()
+            user.save()
+            created = True
+        elif not user.is_active:
+            raise ValidationError("این حساب غیرفعال است؛ با پشتیبانی تماس بگیرید.")
+        elif first_name and not user.first_name:
+            user.first_name = first_name.strip()[:100]
+            user.save(update_fields=["first_name"])
+        audit(user, "auth.phone_login", user, {"created": created})
+    return user, created

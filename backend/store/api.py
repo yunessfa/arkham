@@ -21,6 +21,12 @@ from .models import *
 from .serializers import *
 from .services import *
 from .payments import GatewayUnavailable, GatewayRejected
+from .text import search_variants
+from .iran import PROVINCES
+from .sms import enabled as sms_enabled
+from django.conf import settings
+from django.db.models.functions import TruncDate
+from zoneinfo import ZoneInfo
 
 
 def exception_handler(exc, context):
@@ -62,10 +68,31 @@ class ProductView(PublicRead):
             output_field=DecimalField(),
         )
         qs = qs.annotate(min_price=Min(effective, filter=Q(variants__active=True)))
+        # Subqueries keep rating numbers exact despite the variant joins above.
+        from django.db.models import OuterRef, Subquery, Avg, IntegerField, FloatField
+
+        approved = Review.objects.filter(product=OuterRef("pk"), approved=True).values(
+            "product"
+        )
+        qs = qs.annotate(
+            rating_avg=Subquery(
+                approved.annotate(a=Avg("rating")).values("a")[:1],
+                output_field=FloatField(),
+            ),
+            rating_count=Subquery(
+                approved.annotate(c=Count("id")).values("c")[:1],
+                output_field=IntegerField(),
+            ),
+        )
         if p.get("q"):
-            qs = qs.filter(
-                Q(name__icontains=p["q"][:180]) | Q(description__icontains=p["q"][:180])
-            )
+            match = Q()
+            for term in search_variants(p["q"]):
+                match |= (
+                    Q(name__icontains=term)
+                    | Q(description__icontains=term)
+                    | Q(category__name__icontains=term)
+                )
+            qs = qs.filter(match)
         if p.get("category"):
             qs = qs.filter(category__slug=p["category"])
         for name, op in [("min_price", "gte"), ("max_price", "lte")]:
@@ -177,6 +204,7 @@ class SessionView(APIView):
                 ),
                 "payment_provider": settings.PAYMENT_PROVIDER,
                 "development": settings.DEBUG,
+                "phone_login": sms_enabled(),
                 "demo_mode": settings.DEMO_MODE or SiteContent.objects.filter(key="demo-notice", published=True).exists(),
             }
         )
@@ -250,7 +278,11 @@ class CartView(APIView):
         c = cart_for(r)
         data = []
         total = Decimal(0)
-        for i in c.items.select_related("variant__product").order_by("id"):
+        for i in (
+            c.items.select_related("variant__product")
+            .prefetch_related("variant__product__images")
+            .order_by("id")
+        ):
             v = i.variant
             price = v.current_price
             total += price * i.quantity
@@ -264,6 +296,11 @@ class CartView(APIView):
                     "price": str(price),
                     "available": v.available,
                     "line_total": str(price * i.quantity),
+                    "image": (
+                        r.build_absolute_uri(img.image.url)
+                        if (img := v.product.images.first())
+                        else None
+                    ),
                     "active": v.active and v.product.active,
                 }
             )
@@ -652,8 +689,9 @@ class Dashboard(APIView):
                     ).values("id", "sku", "stock", "reserved")[:20]
                 ),
                 "daily_sales": list(
-                    paid.extra(
-                        select={"day": "date(paid_at AT TIME ZONE 'Asia/Tehran')"}
+                    # Portable (PostgreSQL and the SQLite demo), in shop-local days.
+                    paid.annotate(
+                        day=TruncDate("paid_at", tzinfo=ZoneInfo(settings.TIME_ZONE))
                     )
                     .values("day")
                     .annotate(revenue=Sum("total"))
@@ -782,3 +820,102 @@ AdminCustomers = extend_schema_view(get=extend_schema(responses=OpenApiTypes.OBJ
 Dashboard = extend_schema_view(get=extend_schema(responses=OpenApiTypes.OBJECT))(
     Dashboard
 )
+
+
+
+class QuoteView(APIView):
+    """Live checkout preview: totals, coupon feedback and stock problems."""
+
+    permission_classes = [permissions.AllowAny]
+
+    @method_decorator(csrf_protect)
+    def post(self, r):
+        s = QuoteSerializer(data=r.data)
+        s.is_valid(raise_exception=True)
+        d = s.validated_data
+        return Response(
+            quote_cart(
+                r.user,
+                cart_for(r),
+                d.get("shipping"),
+                d.get("address"),
+                d.get("coupon", ""),
+            )
+        )
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class PhoneCodeView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "sensitive"
+
+    def post(self, r):
+        phone, code, wait = issue_login_code(r.data.get("phone", ""))
+        body = {"ok": True, "phone": phone, "resend_after": wait, "length": 5}
+        # Development convenience only; production providers never echo codes.
+        if settings.DEBUG and settings.SMS_PROVIDER == "console":
+            body["debug_code"] = code
+        return Response(body)
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class PhoneVerifyView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "sensitive"
+
+    def post(self, r):
+        old = r.session.session_key
+        user, created = verify_login_code(
+            r.data.get("phone", ""), r.data.get("code", ""), r.data.get("first_name", "")
+        )
+        merge_cart(user, old)
+        login(r, user, backend="django.contrib.auth.backends.ModelBackend")
+        return Response({"ok": True, "created": created, "needs_name": not user.first_name})
+
+
+class ProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(csrf_protect)
+    def post(self, r):
+        name = serializers.CharField(max_length=100, min_length=2).run_validation(
+            (r.data.get("first_name") or "").strip()
+        )
+        r.user.first_name = name
+        r.user.save(update_fields=["first_name"])
+        return Response({"ok": True})
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def provinces(r):
+    return Response(PROVINCES)
+
+
+QuoteView = extend_schema_view(
+    post=extend_schema(request=QuoteSerializer, responses=OpenApiTypes.OBJECT)
+)(QuoteView)
+PhoneInput = inline_serializer("PhoneInput", fields={"phone": serializers.CharField()})
+PhoneVerifyInput = inline_serializer(
+    "PhoneVerifyInput",
+    fields={
+        "phone": serializers.CharField(),
+        "code": serializers.CharField(),
+        "first_name": serializers.CharField(required=False),
+    },
+)
+PhoneCodeView = extend_schema_view(
+    post=extend_schema(request=PhoneInput, responses=OpenApiTypes.OBJECT)
+)(PhoneCodeView)
+PhoneVerifyView = extend_schema_view(
+    post=extend_schema(request=PhoneVerifyInput, responses=OpenApiTypes.OBJECT)
+)(PhoneVerifyView)
+ProfileView = extend_schema_view(
+    post=extend_schema(
+        request=inline_serializer("ProfileInput", fields={"first_name": serializers.CharField()}),
+        responses=OpenApiTypes.OBJECT,
+    )
+)(ProfileView)
+provinces = extend_schema(responses={200: OpenApiTypes.OBJECT})(provinces)

@@ -1,3 +1,59 @@
 import {useId} from 'react';
-/** Engraved 2D honeybee. Anatomy/veins are vector strokes, not a 3D model. */
-export function BeeMark(){const id='bee-'+useId().replace(/:/g,'');return <svg viewBox="0 0 120 100" fill="none" aria-hidden="true"><defs><linearGradient id={id+'-amber'} x1="43" y1="40" x2="75" y2="87" gradientUnits="userSpaceOnUse"><stop stopColor="#e3bb6a"/><stop offset=".6" stopColor="#c39137"/><stop offset="1" stopColor="#a5742d"/></linearGradient><linearGradient id={id+'-wing'} x1="32" y1="9" x2="54" y2="56" gradientUnits="userSpaceOnUse"><stop stopColor="#fffef8" stopOpacity=".98"/><stop offset="1" stopColor="#f4ead0" stopOpacity=".8"/></linearGradient></defs><g stroke="#55432d" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"><path d="M52 27Q48 13 40 12m25 15q1-13 10-17"/><circle cx="40" cy="12" r="1.5" fill="#55432d"/><circle cx="75" cy="10" r="1.5" fill="#55432d"/><path d="m49 43-15 9-8 14m23-12-14 16-5 11m35-36 15 9 10 13M68 56l14 12 5 14m-31-19-6 15-8 8m20-21 6 13 8 8"/></g><g className="bee-wing bee-wing-a" stroke="#99865b" strokeWidth=".7"><path d="M51 50C17 48 7 13 24 9c18-4 30 22 29 40Z" fill={`url(#${id}-wing)`}/><path d="M50 48C28 36 26 23 25 13m17 29-17-5m11-3-14-8m26 18-5-16m-6 1 1-13M48 49C22 60 8 44 18 37c8-6 22 3 30 12Z"/><path d="m19 42 25 7"/></g><g className="bee-wing bee-wing-b" stroke="#99865b" strokeWidth=".7"><path d="M65 49c35-1 47-36 29-40C77 5 64 31 65 49Z" fill={`url(#${id}-wing)`}/><path d="m67 48 26-34m-17 27 20-6m-14-2 15-8m-26 19 4-15m7 0-1-14M68 49c25 12 41-3 30-11-8-7-23 3-30 11Z"/><path d="m95 42-24 7"/></g><path d="M44 52c0-18 29-19 31-1 2 16-9 33-16 39-8-7-15-23-15-38Z" fill={`url(#${id}-amber)`} stroke="#70532a" strokeWidth="1.2"/><path d="M45 53q14 7 29 0l-1 6q-13 7-27-1Zm3 15q11 6 23-1l-3 7q-10 5-18 0Zm7 14q5 2 9-1l-5 8Z" fill="#51412b"/><path d="m48 45-3-3m6 0-2-4m6 3-1-4m7 4 2-4m2 6 4-3m-24 13-3 1m4 7-3 2m5 7-3 3m20-19 4 1m-4 7 4 3m-7 5 4 3" stroke="#a5864e" strokeWidth=".8" strokeLinecap="round"/><ellipse cx="59" cy="40" rx="11" ry="13" fill="#79613f" stroke="#55432d"/><path d="m52 31 1 6m3-8 1 6m5-6-1 6m5-3-2 6m-13 3 4-1m8 1 4 1m-14 4 3-1m5 2 4-1" stroke="#bd9b61" strokeWidth=".8" strokeLinecap="round"/><path d="M49 26c0-13 20-13 20 0 0 8-20 8-20 0Z" fill="#51412e"/><ellipse cx="52" cy="24" rx="2.5" ry="3.5" fill="#28251d"/><ellipse cx="66" cy="24" rx="2.5" ry="3.5" fill="#28251d"/><circle cx="52" cy="23" r=".8" fill="#f8f2da"/><circle cx="66" cy="23" r=".8" fill="#f8f2da"/><path d="m57 30 2 4 2-4" stroke="#3c3325" strokeWidth="1"/></svg>}
+/**
+ * Top-down honeybee, head up. Drawn from bee anatomy rather than an icon:
+ * elbowed antennae, large compound eyes, hairy thorax, fore + hind wing pairs
+ * with venation, six jointed legs (pollen baskets on the hind pair) and a
+ * banded abdomen that tapers to the sting. Wings pivot at the thorax so the
+ * CSS flap reads as a real wing stroke, not a wobble.
+ */
+export function BeeMark(){
+ const id='bee-'+useId().replace(/:/g,'');
+ const hair=Array.from({length:22},(_,i)=>{const a=i/22*Math.PI*2,r1=12.2,r2=14.6+(i%3)*.7;return `M${(60+Math.cos(a)*r1).toFixed(1)} ${(47+Math.sin(a)*r1).toFixed(1)}L${(60+Math.cos(a)*r2).toFixed(1)} ${(47+Math.sin(a)*r2).toFixed(1)}`}).join('');
+ return <svg viewBox="0 0 120 120" fill="none" aria-hidden="true" className="bee-mark">
+  <defs>
+   <radialGradient id={id+'-thorax'} cx="56" cy="42" r="16" gradientUnits="userSpaceOnUse"><stop stopColor="#e6b85c"/><stop offset=".55" stopColor="#b8822f"/><stop offset="1" stopColor="#6e4a1f"/></radialGradient>
+   <linearGradient id={id+'-abdomen'} x1="46" y1="60" x2="74" y2="60" gradientUnits="userSpaceOnUse"><stop stopColor="#a8701f"/><stop offset=".45" stopColor="#f0be55"/><stop offset="1" stopColor="#9b671d"/></linearGradient>
+   <linearGradient id={id+'-wing'} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff" stopOpacity=".92"/><stop offset="1" stopColor="#f1e3bd" stopOpacity=".55"/></linearGradient>
+   <clipPath id={id+'-body'}><path d="M60 58c9 0 14.5 7.5 14.5 17.5 0 10-6.2 19.5-14.5 26.5-8.3-7-14.5-16.5-14.5-26.5C45.5 65.5 51 58 60 58Z"/></clipPath>
+  </defs>
+  {/* legs: front, middle, hind (with corbicula pollen loads) */}
+  <g stroke="#3b2b19" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="bee-legs">
+   <path d="M51 41 43 35 39 27M69 41 77 35 81 27"/>
+   <path d="M49 49 38 51 31 59M71 49 82 51 89 59"/>
+   <path d="M51 55 42 64 39 79M69 55 78 64 81 79"/>
+  </g>
+  <ellipse cx="40.8" cy="70" rx="3.1" ry="4.2" fill="#e8962c" stroke="#9c5e16" strokeWidth=".6" className="bee-pollen"/>
+  <ellipse cx="79.2" cy="70" rx="3.1" ry="4.2" fill="#e8962c" stroke="#9c5e16" strokeWidth=".6" className="bee-pollen"/>
+  {/* abdomen with alternating tergite bands and fine hair rows */}
+  <g clipPath={`url(#${id}-body)`}>
+   <rect x="40" y="56" width="40" height="50" fill={`url(#${id}-abdomen)`}/>
+   <path d="M40 66.5h40v4.6H40zM40 77h40v4.8H40zM40 87.6h40v5H40zM40 98h40v6H40z" fill="#3a2a17"/>
+   <path d="M46 64.6q14 3 28 0M45.6 75.2q14.4 3 28.8 0M46.6 85.8q13.4 3 26.8 0M49 96.2q11 2.6 22 0" stroke="#fff3c9" strokeWidth=".7" opacity=".55"/>
+  </g>
+  <path d="M60 58c9 0 14.5 7.5 14.5 17.5 0 10-6.2 19.5-14.5 26.5-8.3-7-14.5-16.5-14.5-26.5C45.5 65.5 51 58 60 58Z" stroke="#4a3418" strokeWidth="1"/>
+  <path d="m58.6 101.6 1.4 5.2 1.4-5.2" fill="#2b2014" stroke="#2b2014" strokeWidth=".8" strokeLinejoin="round"/>
+  {/* hindwings sit under the forewings */}
+  <g className="bee-wing bee-wing-a">
+   <path d="M52.5 50C43 50.5 33 53.5 27.5 58.5c-2.2 2 .2 4.6 3.5 4C39 61 47.5 57 53 53Z" fill={`url(#${id}-wing)`} stroke="#8f7c54" strokeWidth=".6"/>
+   <path d="M51.5 42.5C42 36 29 28.5 19 27.5c-6-.6-7.8 3.8-3.6 7.6C23 42 38 47.5 52 48.5Z" fill={`url(#${id}-wing)`} stroke="#8f7c54" strokeWidth=".65"/>
+   <path d="M51 45C40 40 28 34 18 31.5M44 43.5 38 34.5M36 40.8l-3.5-8.6M28 37.5l-1.8-6.4M50.5 51.5 31 59.5M44 53 41 59" stroke="#8f7c54" strokeWidth=".45" opacity=".9"/>
+  </g>
+  <g className="bee-wing bee-wing-b">
+   <path d="M67.5 50c9.5.5 19.5 3.5 25 8.5 2.2 2-.2 4.6-3.5 4C81 61 72.5 57 67 53Z" fill={`url(#${id}-wing)`} stroke="#8f7c54" strokeWidth=".6"/>
+   <path d="M68.5 42.5C78 36 91 28.5 101 27.5c6-.6 7.8 3.8 3.6 7.6C97 42 82 47.5 68 48.5Z" fill={`url(#${id}-wing)`} stroke="#8f7c54" strokeWidth=".65"/>
+   <path d="M69 45c11-5 23-11 33-13.5M76 43.5l6-9M84 40.8l3.5-8.6M92 37.5l1.8-6.4M69.5 51.5 89 59.5M76 53l3 6" stroke="#8f7c54" strokeWidth=".45" opacity=".9"/>
+  </g>
+  {/* hairy thorax */}
+  <path d={hair} stroke="#c99a4a" strokeWidth=".9" strokeLinecap="round" opacity=".85"/>
+  <circle cx="60" cy="47" r="12.5" fill={`url(#${id}-thorax)`} stroke="#5a3d18" strokeWidth=".9"/>
+  <path d="M54 43.5q6-3.5 12 0M53 49q7 3.2 14 0" stroke="#7a5323" strokeWidth=".8" opacity=".7"/>
+  {/* head: compound eyes, ocelli, elbowed antennae */}
+  <path d="M57.4 25.5 55 18.5l-6.5-6M62.6 25.5 65 18.5l6.5-6" stroke="#2f2416" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
+  <circle cx="48.3" cy="12.3" r="1.2" fill="#2f2416"/><circle cx="71.7" cy="12.3" r="1.2" fill="#2f2416"/>
+  <ellipse cx="60" cy="31" rx="9.4" ry="8" fill="#4a3620" stroke="#2c2014" strokeWidth=".9"/>
+  <ellipse cx="52.6" cy="30.2" rx="3.6" ry="5.6" fill="#1f1912" transform="rotate(-12 52.6 30.2)"/>
+  <ellipse cx="67.4" cy="30.2" rx="3.6" ry="5.6" fill="#1f1912" transform="rotate(12 67.4 30.2)"/>
+  <ellipse cx="51.7" cy="28.4" rx="1" ry="1.6" fill="#fff6dc" opacity=".8"/><ellipse cx="66.5" cy="28.4" rx="1" ry="1.6" fill="#fff6dc" opacity=".8"/>
+  <circle cx="58.3" cy="26.6" r=".75" fill="#e9c77d"/><circle cx="61.7" cy="26.6" r=".75" fill="#e9c77d"/><circle cx="60" cy="25.4" r=".75" fill="#e9c77d"/>
+ </svg>
+}

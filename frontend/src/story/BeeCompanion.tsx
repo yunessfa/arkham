@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import {BeeMark} from './Bee';
 import {advanceFlight,flightLane,landingCurve,type FlightState,type Point} from './beeMotion';
 import {beeTarget} from '../design/registry';
+const shortest=(d:number)=>((d+540)%360)-180;
 /** Mounted once and portalled outside route/reveal transforms. No target = keep flying. */
 export default function BeeCompanion({enabled=true}:{enabled?:boolean}){
  const ref=useRef<HTMLDivElement>(null),memory=useRef<FlightState|null>(null);
@@ -40,11 +41,19 @@ export default function BeeCompanion({enabled=true}:{enabled?:boolean}){
    state.x=Math.max(margin,Math.min(innerWidth-margin,state.x));state.y=Math.max(82,Math.min(innerHeight-35,state.y));memory.current=state;
    const settled=!moving&&Math.hypot(state.x-target.x,state.y-target.y)<.6&&Math.hypot(state.vx,state.vy)<2&&(!destination||now-landStart>1050);
    if(settled){state={...target,vx:0,vy:0};memory.current=state;mode=destination?'perched':'hovering';}
-   const desiredAngle=moving?Math.max(-20,Math.min(20,state.vx*.035+velocity*.008)):0;angle+=(desiredAngle-angle)*(1-Math.exp(-dt*9));
+   // The bee faces where it flies (head-up artwork: 0deg = up). Slow drift keeps it upright;
+   // perched it turns slightly toward the title it sits beside.
+   const speed=Math.hypot(state.vx,state.vy);
+   const travel=Math.atan2(state.vx,-state.vy)*180/Math.PI;
+   const blend=Math.min(1,Math.max(0,(speed-25)/140));
+   const rest=mode==='perched'||mode==='settling'?-18:0;
+   let desiredAngle=rest+shortest(travel-rest)*blend*.85;
+   desiredAngle=Math.max(-150,Math.min(150,desiredAngle));
+   angle+=shortest(desiredAngle-angle)*(1-Math.exp(-dt*7));
    bee.style.transform=`translate3d(${state.x}px,${state.y}px,0)`;bee.style.setProperty('--bee-angle',angle+'deg');bee.dataset.mode=mode;bee.dataset.x=state.x.toFixed(1);bee.dataset.y=state.y.toFixed(1);bee.dataset.anchor=destination&&landingHeading?'heading':'lane';
    // Position is written before showing; never starts from (0,0) or resets on product fetch.
    bee.hidden=false;if(!wasVisible){bee.dataset.visible='true';wasVisible=true;}
-   if(!settled||moving||Math.abs(angle)>.1)schedule();
+   if(!settled||moving||Math.abs(shortest(rest-angle))>.15)schedule();
   }
   function visibility(){lastTime=0;schedule()}
   addEventListener('scroll',scroll,{passive:true});addEventListener('resize',resize);document.addEventListener('visibilitychange',visibility);preference.addEventListener('change',resize);
@@ -52,5 +61,5 @@ export default function BeeCompanion({enabled=true}:{enabled?:boolean}){
   document.fonts.ready.then(()=>{if(!stopped)resize()});schedule();
   return()=>{stopped=true;layoutObserver.disconnect();cancelAnimationFrame(frame);removeEventListener('scroll',scroll);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);preference.removeEventListener('change',resize)};
  },[enabled]);
- return createPortal(<div ref={ref} className="bee-companion-v7" aria-hidden="true" hidden><div className="bee-rot"><BeeMark/></div></div>,document.body);
+ return createPortal(<div ref={ref} className="bee-companion-v7" aria-hidden="true" hidden><div className="bee-rot"><div className="bee-bob"><BeeMark/></div></div><span className="bee-shadow"/></div>,document.body);
 }

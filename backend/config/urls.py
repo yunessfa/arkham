@@ -35,7 +35,12 @@ router.register("admin/audit", api.AdminAudit, basename="admin-audit")
 urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("api/v1/session/", api.SessionView.as_view()),
+    path("api/v1/accounts/phone/code/", api.PhoneCodeView.as_view()),
+    path("api/v1/accounts/phone/verify/", api.PhoneVerifyView.as_view()),
+    path("api/v1/accounts/profile/", api.ProfileView.as_view()),
     path("api/v1/accounts/<str:kind>/", api.AuthView.as_view()),
+    path("api/v1/checkout/quote/", api.QuoteView.as_view()),
+    path("api/v1/provinces/", api.provinces),
     path("api/v1/cart/", api.CartView.as_view()),
     path("api/v1/favorites/", api.FavoriteView.as_view()),
     path("api/v1/newsletter/", api.NewsletterView.as_view()),

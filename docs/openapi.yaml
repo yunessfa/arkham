@@ -38,6 +38,89 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/accounts/phone/code/:
+    post:
+      operationId: accounts_phone_code_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/accounts/phone/verify/:
+    post:
+      operationId: accounts_phone_verify_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneVerifyInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneVerifyInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneVerifyInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/accounts/profile/:
+    post:
+      operationId: accounts_profile_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProfileInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProfileInput'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/addresses/:
     get:
       operationId: addresses_list
@@ -1980,6 +2063,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
+  /api/v1/checkout/quote/:
+    post:
+      operationId: checkout_quote_create
+      description: 'Live checkout preview: totals, coupon feedback and stock problems.'
+      tags:
+      - checkout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Quote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Quote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Quote'
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/content/:
     get:
       operationId: content_list
@@ -2382,6 +2493,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/provinces/:
+    get:
+      operationId: provinces_retrieve
+      tags:
+      - provinces
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/reviews/:
     get:
@@ -3639,6 +3766,25 @@ components:
           type: boolean
         product:
           type: integer
+    PhoneInput:
+      type: object
+      properties:
+        phone:
+          type: string
+      required:
+      - phone
+    PhoneVerifyInput:
+      type: object
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+        first_name:
+          type: string
+      required:
+      - code
+      - phone
     Product:
       type: object
       properties:
@@ -3679,11 +3825,16 @@ components:
           items:
             $ref: '#/components/schemas/Image'
           readOnly: true
+        rating:
+          type: object
+          additionalProperties: {}
+          readOnly: true
       required:
       - category
       - id
       - images
       - name
+      - rating
       - slug
       - variants
     ProductImageManagement:
@@ -3753,6 +3904,25 @@ components:
       - id
       - name
       - slug
+    ProfileInput:
+      type: object
+      properties:
+        first_name:
+          type: string
+      required:
+      - first_name
+    Quote:
+      type: object
+      properties:
+        shipping:
+          type: integer
+          minimum: 1
+        address:
+          type: integer
+          minimum: 1
+        coupon:
+          type: string
+          maxLength: 40
     Review:
       type: object
       properties:
@@ -4034,9 +4204,13 @@ components:
         available:
           type: integer
           readOnly: true
+        discount_percent:
+          type: integer
+          readOnly: true
       required:
       - available
       - current_price
+      - discount_percent
       - id
       - price
       - sku

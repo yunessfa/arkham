@@ -19,6 +19,9 @@ x-backend: &backend
     PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://arkham.ir}
     PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-disabled}
     ZARINPAL_MERCHANT_ID: ${ZARINPAL_MERCHANT_ID:-}
+    SMS_PROVIDER: ${SMS_PROVIDER:-disabled}
+    KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+    KAVENEGAR_TEMPLATE: ${KAVENEGAR_TEMPLATE:-}
   volumes:
     - media:/app/backend/media
     - static:/app/backend/staticfiles

@@ -332,3 +332,18 @@ class SiteAsset(models.Model):
 
     def __str__(self):
         return self.key
+
+
+class PhoneOTP(models.Model):
+    """One-time login code. Only an HMAC of the code is stored."""
+
+    phone = models.CharField(max_length=11, db_index=True)
+    code_hash = models.CharField(max_length=64)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    consumed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["phone", "created_at"], name="otp_phone_recent")]

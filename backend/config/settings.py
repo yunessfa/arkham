@@ -165,3 +165,13 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "WARNING"},
 }
+# Phone login (OTP). console is development-only and rejected in production.
+SMS_PROVIDER = os.getenv("SMS_PROVIDER", "console" if DEBUG else "disabled")
+KAVENEGAR_API_KEY = os.getenv("KAVENEGAR_API_KEY", "")
+KAVENEGAR_TEMPLATE = os.getenv("KAVENEGAR_TEMPLATE", "")
+if not DEBUG and SMS_PROVIDER == "console":
+    raise ImproperlyConfigured("Console SMS is forbidden in production")
+OTP_TTL_SECONDS = 120
+OTP_RESEND_SECONDS = 60
+OTP_MAX_PER_HOUR = 5
+OTP_MAX_ATTEMPTS = 5

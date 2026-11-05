@@ -23,7 +23,23 @@ class VariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variant
-        fields = ["id", "sku", "weight_g", "price", "current_price", "available"]
+        fields = [
+            "id",
+            "sku",
+            "weight_g",
+            "price",
+            "current_price",
+            "available",
+            "discount_percent",
+        ]
+
+    discount_percent = serializers.SerializerMethodField()
+
+    def get_discount_percent(self, v) -> int:
+        current = v.current_price
+        if not v.price or current >= v.price:
+            return 0
+        return int(round((v.price - current) * 100 / v.price))
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -58,13 +74,46 @@ class ProductSerializer(serializers.ModelSerializer):
             "meta_description",
             "variants",
             "images",
+            "rating",
         ]
+
+    rating = serializers.SerializerMethodField()
+
+    def get_rating(self, obj) -> dict:
+        avg = getattr(obj, "rating_avg", None)
+        return {
+            "average": round(avg, 1) if avg else None,
+            "count": getattr(obj, "rating_count", None) or 0,
+        }
 
 
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         exclude = ["user"]
+
+    def to_internal_value(self, data):
+        from .text import latin_digits, normalize_fa, normalize_phone
+
+        if hasattr(data, "copy"):
+            data = data.copy()
+        for key in ("recipient", "province", "city", "street"):
+            if key in data and isinstance(data[key], str):
+                data[key] = normalize_fa(data[key])
+        if isinstance(data.get("phone"), str):
+            data["phone"] = normalize_phone(data["phone"]) or latin_digits(data["phone"])
+        if isinstance(data.get("postal_code"), str):
+            data["postal_code"] = "".join(
+                c for c in latin_digits(data["postal_code"]) if c.isdigit()
+            )
+        return super().to_internal_value(data)
+
+    def validate_province(self, value):
+        from .iran import PROVINCES
+
+        if value not in PROVINCES:
+            raise serializers.ValidationError("استان را از فهرست انتخاب کنید.")
+        return value
 
 
 class ShippingSerializer(serializers.ModelSerializer):
@@ -109,6 +158,12 @@ class CheckoutSerializer(serializers.Serializer):
     address = serializers.IntegerField(min_value=1)
     shipping = serializers.IntegerField(min_value=1)
     idempotency_key = serializers.UUIDField()
+    coupon = serializers.CharField(max_length=40, required=False, allow_blank=True)
+
+
+class QuoteSerializer(serializers.Serializer):
+    shipping = serializers.IntegerField(min_value=1, required=False)
+    address = serializers.IntegerField(min_value=1, required=False)
     coupon = serializers.CharField(max_length=40, required=False, allow_blank=True)
 
 

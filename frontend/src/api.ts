@@ -1,7 +1,8 @@
 export const fa = (n: any) =>
   new Intl.NumberFormat("fa-IR").format(Number(n || 0));
 export const money = (n: any) => fa(n) + " تومان";
-export const date = (n: any) => new Date(n).toLocaleString("fa-IR");
+export const date = (n: any) =>
+  new Date(n).toLocaleString("fa-IR", { dateStyle: "medium", timeStyle: "short" });
 export function csrf() {
   return (
     document.cookie

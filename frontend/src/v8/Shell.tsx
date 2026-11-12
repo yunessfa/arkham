@@ -67,6 +67,7 @@ export function ThemeSwitch({ compact = false }: { compact?: boolean }) {
 
 const links: [string, string][] = [
   ["/products", "فروشگاه"],
+  ["/honey-finder", "عسل‌یاب"],
   ["/pages/story", "داستان ارکام"],
   ["/journal", "مجله"],
   ["/contact", "تماس با ما"],

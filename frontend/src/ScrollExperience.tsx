@@ -19,7 +19,8 @@ export default function ScrollExperience() {
       }
       root.classList.add("motion-enabled");
       const privateRoute = isWorkflowRoute(pathname);
-      const lenis = privateRoute
+      // Touch screens keep native momentum scrolling; smoothing is for wheels.
+      const lenis = privateRoute || !pointer.matches
         ? null
         : new Lenis({
             duration: 1.05,

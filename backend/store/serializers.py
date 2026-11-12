@@ -233,16 +233,26 @@ class NewsletterSerializer(serializers.Serializer):
 
 class RegisterSerializer(serializers.Serializer):
     username = serializers.RegexField(r"^[a-zA-Z0-9_.@+-]{3,150}$")
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False, allow_blank=True, default="")
     first_name = serializers.CharField(max_length=100)
     password = serializers.CharField(write_only=True, max_length=128)
+
+    def to_internal_value(self, data):
+        # Mobile numbers typed with Persian digits become the username as-is.
+        if hasattr(data, "copy"):
+            data = data.copy()
+            data["username"] = str(data.get("username", "")).translate(
+                str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+            ).strip()
+        return super().to_internal_value(data)
 
     def validate(self, d):
         from django.contrib.auth.password_validation import validate_password
 
+        d["email"] = (d.get("email") or "").strip().lower()
         if get_user_model().objects.filter(username__iexact=d["username"]).exists():
             raise serializers.ValidationError("این نام کاربری قابل استفاده نیست.")
-        if get_user_model().objects.filter(email__iexact=d["email"]).exists():
+        if d["email"] and get_user_model().objects.filter(email__iexact=d["email"]).exists():
             raise serializers.ValidationError("این ایمیل قابل استفاده نیست.")
         u = get_user_model()(
             username=d["username"], email=d["email"], first_name=d["first_name"]
@@ -365,3 +375,74 @@ class SiteAssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteAsset
         fields = ["id", "key", "image", "alt"]
+
+
+import re as _re
+
+PHONE_RE = _re.compile(r"^09[0-9]{9}$")
+_PREF_CHOICES = {
+    "purposes": {"daily", "gift", "wellness", "kids", "tea"},
+    "tastes": {"mild", "floral", "herbal", "bold", "fruity"},
+    "colors": {"light", "amber", "dark"},
+}
+
+
+def _latin(value):
+    return str(value or "").translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
+
+
+class ProfileSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=100, min_length=2, trim_whitespace=True)
+    last_name = serializers.CharField(max_length=150, allow_blank=True, trim_whitespace=True)
+    email = serializers.EmailField(allow_blank=True)
+    phone = serializers.CharField(max_length=16, allow_blank=True)
+    birthday = serializers.CharField(max_length=5, allow_blank=True)
+    preferences = serializers.DictField()
+    marketing = serializers.BooleanField()
+    complete = serializers.BooleanField()
+
+    def validate_email(self, v):
+        v = v.strip().lower()
+        if v and get_user_model().objects.filter(email__iexact=v).exclude(pk=self.context["user"].pk).exists():
+            raise serializers.ValidationError("این ایمیل برای حساب دیگری ثبت شده است.")
+        return v
+
+    def validate_phone(self, v):
+        v = _latin(v).replace(" ", "").replace("-", "")
+        if v.startswith("+98"):
+            v = "0" + v[3:]
+        if v and not PHONE_RE.match(v):
+            raise serializers.ValidationError("شمارهٔ موبایل را به شکل ۰۹۱۲۱۲۳۴۵۶۷ وارد کنید.")
+        return v
+
+    def validate_birthday(self, v):
+        v = _latin(v)
+        if v and not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$", v):
+            raise serializers.ValidationError("روز و ماه تولد معتبر نیست.")
+        if v and int(v[:2]) > 6 and int(v[3:]) > 30:
+            raise serializers.ValidationError("ماه‌های دوم سال ۳۰ روزه‌اند.")
+        return v
+
+    def validate_preferences(self, v):
+        from .catalog import NEEDS
+
+        allowed = dict(_PREF_CHOICES, needs=set(NEEDS))
+        clean = {}
+        for key, values in v.items():
+            if key in allowed:
+                if not isinstance(values, list) or not set(values) <= allowed[key] or len(values) > 12:
+                    raise serializers.ValidationError("گزینه‌های سلیقه معتبر نیستند.")
+                clean[key] = sorted(set(values))
+            elif key == "weight":
+                if str(values) not in {"", "500", "650", "1000"}:
+                    raise serializers.ValidationError("وزن انتخابی معتبر نیست.")
+                clean[key] = str(values)
+            elif key == "budget":
+                if values not in {"", "low", "mid", "high"}:
+                    raise serializers.ValidationError("بودجه انتخابی معتبر نیست.")
+                clean[key] = values
+            elif key == "favorites":
+                if not isinstance(values, list) or len(values) > 12 or not all(isinstance(x, str) and len(x) <= 60 for x in values):
+                    raise serializers.ValidationError("فهرست عسل‌های محبوب معتبر نیست.")
+                clean[key] = values
+        return clean

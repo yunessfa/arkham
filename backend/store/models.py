@@ -347,3 +347,25 @@ class PhoneOTP(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["phone", "created_at"], name="otp_phone_recent")]
+
+
+class CustomerProfile(models.Model):
+    """Signup details beyond Django's user: contact, birthday and honey taste."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="customer"
+    )
+    phone = models.CharField(
+        max_length=11, blank=True, validators=[RegexValidator(r"^09[0-9]{9}$")]
+    )
+    # Jalali month/day only ("MM-DD"); the year is never asked.
+    birthday = models.CharField(
+        max_length=5, blank=True, validators=[RegexValidator(r"^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")]
+    )
+    preferences = models.JSONField(default=dict, blank=True)
+    marketing = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"profile:{self.user_id}"

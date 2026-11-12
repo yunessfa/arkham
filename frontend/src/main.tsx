@@ -44,6 +44,10 @@ import { CollectionPage, ProductPage, ProductCard } from "./v8/Shop";
 import { CartPage, CheckoutPage, LoginPage } from "./v8/Checkout";
 import StoryPage from "./v8/Story";
 import "./v8/v8.css";
+import HoneyFinder from "./v9/Finder";
+import { AccountPage, Welcome } from "./v9/Welcome";
+import { ContactPage, SiteFooter } from "./v9/Site";
+import "./v9/v9.css";
 function ErrorBox({ message }: { message: string }) {
   return message ? (
     <p className="error" role="alert">
@@ -1962,12 +1966,6 @@ function App() {
       </a>
       <ScrollExperience />
       <SiteHeader brand={<BrandIdentity />} session={session} cart={cart} socials={rows(siteContent.data).find((c: any) => c.key === "contact")?.settings?.socials || []} />
-      {session?.demo_mode && (
-        <aside className="demo-notice">
-          <span>DEMO</span> نسخه نمایشی — تصاویر و قیمت‌ها نمونه‌اند؛ پرداخت
-          واقعی نیست.
-        </aside>
-      )}
       {bootError && (
         <div className="wrap">
           <ErrorBox message={bootError} />
@@ -2006,13 +2004,15 @@ function App() {
                 <Route path="/checkout" element={<CheckoutRoute />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/pages/story" element={<StoryPage />} />
-                <Route path="/account" element={<Account />} />
+                <Route path="/account" element={<AccountPage />} />
+                <Route path="/welcome" element={<Welcome />} />
+                <Route path="/honey-finder" element={<HoneyFinder />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
                 <Route path="/favorites" element={<Favorites />} />
                 <Route path="/journal" element={<Journal />} />
                 <Route path="/journal/:slug" element={<ArticlePage />} />
                 <Route path="/pages/:key" element={<ContentPage />} />
-                <Route path="/contact" element={<Contact />} />
+                <Route path="/contact" element={<ContactPage />} />
                 <Route path="/track" element={<Track />} />
                 <Route path="/manage" element={<Manage />} />
                 <Route path="*" element={<NotFound />} />
@@ -2021,7 +2021,7 @@ function App() {
           </PageTransition>
         </Boundary>
       </div>
-      <Footer />
+      <SiteFooter />
       <TabBar session={session} cart={cart} />
       {toast && <Snackbar key={toast} text={toast} onClose={() => setToast("")} />}
     </Context.Provider>

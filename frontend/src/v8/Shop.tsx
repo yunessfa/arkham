@@ -5,6 +5,9 @@ import { useApp, useData } from "../appContext";
 import { BrandedFallback, HexMark } from "../components/Atelier";
 import { ImageZoom } from "../motion/Motion";
 import { Icon } from "./icons";
+import { HoneyArt } from "../v9/Flora";
+import { profileOf, visibleSpecs } from "../v9/honey";
+import { FlowerStory, HoneyBadges, HoneyProfilePanel } from "../v9/HoneyDetails";
 
 const DEMO_PREFIX = "نمونه نمایشی؛ تصویر تولیدشده با هوش مصنوعی و قیمت غیرواقعی. ";
 export const cleanText = (t: string) => String(t || "").replace(DEMO_PREFIX, "");
@@ -93,7 +96,7 @@ export function ProductCard({ product: p, index = 0 }: { product: any; index?: n
   return (
     <article className={"shop-card" + (out ? " is-out" : "")} style={{ "--i": index % 6 } as any} data-reveal="card">
       <Link className="shop-card-media" to={"/products/" + p.slug} aria-label={p.name}>
-        {p.images?.[0] ? <SoftImage src={p.images[0].image} alt={p.images[0].alt || p.name} /> : <BrandedFallback label="" />}
+        {p.images?.[0] ? <SoftImage src={p.images[0].image} alt={p.images[0].alt || p.name} /> : profileOf(p) ? <HoneyArt h={profileOf(p)!} name={p.name} /> : <BrandedFallback label="" />}
         <span className="shop-card-badges">
           {off > 0 && <b className="badge-sale">٪{fa(off)} تخفیف</b>}
           {p.featured && !off && <b className="badge-feature">ویژه</b>}
@@ -121,7 +124,7 @@ export function ProductCard({ product: p, index = 0 }: { product: any; index?: n
 }
 
 /* --------------------------------------------------------- collection page */
-const SORTS: [string, string][] = [["newest", "جدیدترین"], ["bestselling", "پرفروش‌ترین"], ["price", "ارزان‌ترین"], ["-price", "گران‌ترین"]];
+const SORTS: [string, string][] = [["recommended", "پیشنهاد ارکام"], ["newest", "جدیدترین"], ["bestselling", "پرفروش‌ترین"], ["price", "ارزان‌ترین"], ["-price", "گران‌ترین"]];
 const FILTER_KEYS = ["min_price", "max_price", "weight", "available", "sale"];
 
 export function CollectionPage() {
@@ -162,7 +165,7 @@ export function CollectionPage() {
   }
   const category = cats.find((c: any) => c.slug === current);
   const activeFilters = FILTER_KEYS.filter((k) => params.get(k)).length;
-  const sort = params.get("sort") || "newest";
+  const sort = params.get("sort") || "recommended";
   return (
     <main className="page wrap shop-page">
       <header className="shop-hero">
@@ -170,6 +173,7 @@ export function CollectionPage() {
         <h1 tabIndex={-1}>{category ? category.name : "مجموعهٔ عسل ارکام"}</h1>
         <p>{category?.description ? cleanText(category.description) : "هر شیشه، یک فصل از کوهستان. بر اساس طعم، وزن یا مناسبت انتخاب کنید."}</p>
         <span className="shop-hero-hex" aria-hidden="true"><HexMark /></span>
+        <Link className="shop-finder" to="/honey-finder"><Icon name="search" size={18} />نمی‌دانید کدام؟ عسل‌یاب را امتحان کنید</Link>
       </header>
       <div className="shop-toolbar">
         <div className="shop-search">
@@ -191,7 +195,7 @@ export function CollectionPage() {
         <span aria-live="polite">{items === null ? "در حال جست‌وجو…" : fa(count) + " محصول"}</span>
         <label className="sort-select">
           <span className="visually-hidden">مرتب‌سازی</span>
-          <select value={sort} onChange={(e) => update({ sort: e.target.value === "newest" ? null : e.target.value })}>
+          <select value={sort} onChange={(e) => update({ sort: e.target.value === "recommended" ? null : e.target.value })}>
             {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </label>
@@ -230,10 +234,10 @@ function FilterSheet({ open, onClose, params, apply }: { open: boolean; onClose:
         <span className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head"><h2>فیلتر و مرتب‌سازی</h2><button className="icon-button" aria-label="بستن" onClick={onClose}><Icon name="close" /></button></div>
         <fieldset className="sheet-group"><legend>ترتیب نمایش</legend>
-          <div className="chip-wrap">{SORTS.map(([v, l]) => <button type="button" key={v} className="chip" aria-pressed={(draft.sort || "newest") === v} onClick={() => set("sort", v === "newest" ? "" : v)}>{l}</button>)}</div>
+          <div className="chip-wrap">{SORTS.map(([v, l]) => <button type="button" key={v} className="chip" aria-pressed={(draft.sort || "recommended") === v} onClick={() => set("sort", v === "recommended" ? "" : v)}>{l}</button>)}</div>
         </fieldset>
         <fieldset className="sheet-group"><legend>وزن</legend>
-          <div className="chip-wrap">{[["", "همه"], ["250", "۲۵۰ گرم"], ["500", "۵۰۰ گرم"], ["1000", "۱ کیلو"]].map(([v, l]) => <button type="button" key={v} className="chip" aria-pressed={(draft.weight || "") === v} onClick={() => set("weight", v)}>{l}</button>)}</div>
+          <div className="chip-wrap">{[["", "همه"], ["500", "۵۰۰ گرم"], ["650", "۶۵۰ گرم"], ["1000", "۱ کیلو"]].map(([v, l]) => <button type="button" key={v} className="chip" aria-pressed={(draft.weight || "") === v} onClick={() => set("weight", v)}>{l}</button>)}</div>
         </fieldset>
         <fieldset className="sheet-group"><legend>بازهٔ قیمت (تومان)</legend>
           <div className="range-pair">
@@ -275,7 +279,8 @@ function Gallery({ p }: { p: any }) {
     return () => io.disconnect();
   }, [images.length]);
   const go = (i: number) => track.current?.querySelector<HTMLElement>(`[data-index="${i}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  if (!images.length) return <div className="pdp-gallery"><div className="pdp-track"><figure><BrandedFallback label="تصویر محصول هنوز منتشر نشده است" /></figure></div></div>;
+  const art = profileOf(p);
+  if (!images.length) return <div className="pdp-gallery"><div className="pdp-track"><figure>{art ? <HoneyArt h={art} name={p.name} /> : <BrandedFallback label="تصویر محصول هنوز منتشر نشده است" />}</figure></div></div>;
   return (
     <div className="pdp-gallery">
       <div className="pdp-track" ref={track} tabIndex={0} aria-label="تصاویر محصول؛ برای دیدن بقیه بکشید">
@@ -310,6 +315,8 @@ function ProductBody({ p }: { p: any }) {
   const benefits = useData("content/");
   const items = rows(benefits.data).find((b: any) => b.key === "benefits")?.settings?.items;
   const description = cleanText(p.description);
+  const honey = profileOf(p);
+  const paragraphs = description.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
   const others = [...rows(related.data), ...rows(fallback.data)].filter((x: any, i, a) => x.id !== p.id && a.findIndex((y: any) => y.id === x.id) === i).slice(0, 4);
   const buyRef = useRef<HTMLDivElement>(null), [docked, setDocked] = useState(false);
   useEffect(() => { setQty(1); }, [variantId]);
@@ -339,7 +346,8 @@ function ProductBody({ p }: { p: any }) {
           <span className="pdp-kicker">{p.category.name}</span>
           <h1 tabIndex={-1}>{p.name}</h1>
           <Stars rating={p.rating} />
-          {description && <div className={"pdp-desc" + (more ? " is-open" : "")}><p>{description}</p>{description.length > 160 && <button className="text-button" onClick={() => setMore(!more)}>{more ? "بستن" : "ادامهٔ توضیحات"}</button>}</div>}
+          {honey && <HoneyBadges h={honey} />}
+          {description && <div className={"pdp-desc" + (more ? " is-open" : "")}>{paragraphs.map((x, i) => <p key={i} className={i === paragraphs.length - 1 && /طب سنتی و تجربه/.test(x) ? "pdp-note" : ""}>{x}</p>)}{description.length > 160 && <button className="text-button" onClick={() => setMore(!more)}>{more ? "بستن" : "ادامهٔ توضیحات"}</button>}</div>}
           {p.variants.length > 0 && (
             <fieldset className="weights">
               <legend>انتخاب وزن</legend>
@@ -376,9 +384,10 @@ function ProductBody({ p }: { p: any }) {
             ))}
           </ul>
           <div className="pdp-accordions">
-            {Object.keys(p.specifications || {}).length > 0 && (
-              <Accordion title="مشخصات" open>
-                <dl className="spec-list">{Object.entries(p.specifications).map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{String(val)}</dd></div>)}</dl>
+            {honey && <Accordion title="شناسنامهٔ طعم" open><HoneyProfilePanel h={honey} /></Accordion>}
+            {visibleSpecs(p).length > 0 && (
+              <Accordion title="مشخصات" open={!honey}>
+                <dl className="spec-list">{visibleSpecs(p).map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{String(val)}</dd></div>)}</dl>
               </Accordion>
             )}
             {p.storage && <Accordion title="نگهداری و مصرف"><p>{cleanText(p.storage)}</p><p className="muted">بلوری‌شدن (شکرک) عسل طبیعی است؛ برای روان‌شدن، ظرف را در آب ولرم (نه داغ) بگذارید.</p></Accordion>}
@@ -391,6 +400,7 @@ function ProductBody({ p }: { p: any }) {
           </div>
         </div>
       </div>
+      {honey && <FlowerStory h={honey} name={p.name} />}
       {others.length > 0 && (
         <section className="pdp-related">
           <div className="pdp-related-head"><h2>شاید این‌ها را هم دوست داشته باشید</h2><Link className="text-button" to="/products">همهٔ محصولات</Link></div>

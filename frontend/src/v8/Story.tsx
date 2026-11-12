@@ -1,3 +1,5 @@
+import { HoneyArt } from "../v9/Flora";
+import { profileOf } from "../v9/honey";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { fa, rows } from "../api";
@@ -105,7 +107,15 @@ function ChapterNav() {
     chapters.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => io.disconnect();
   }, []);
-  useEffect(() => { bar.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); }, [active]);
+  // Keep the active chapter centred by scrolling the chip bar only. Calling
+  // scrollIntoView here also moved the page and fought the reader's swipe.
+  useEffect(() => {
+    const nav = bar.current, el = nav?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!nav || !el) return;
+    const a = el.getBoundingClientRect(), b = nav.getBoundingClientRect();
+    const left = nav.scrollLeft + (a.left - b.left) - (b.width - a.width) / 2;
+    nav.scrollTo({ left, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [active]);
   return (
     <nav className="story-chapters-nav" aria-label="فصل‌های داستان" ref={bar}>
       {chapters.map(([id, label], i) => (
@@ -250,7 +260,7 @@ export default function StoryPage() {
           <div className="sv-picks">
             {picks.map((p: any) => { const v = bestVariant(p); return (
               <Link className="sv-pick" key={p.id} to={"/products/" + p.slug} data-reveal="card">
-                {p.images?.[0] && <SoftImage src={p.images[0].image} alt={p.images[0].alt || p.name} />}
+                {p.images?.[0] ? <SoftImage src={p.images[0].image} alt={p.images[0].alt || p.name} /> : profileOf(p) ? <HoneyArt h={profileOf(p)!} name={p.name} /> : null}
                 <span><strong>{p.name}</strong><small>{v ? "از " + fa(v.current_price) + " تومان" : ""}</small></span>
               </Link>
             ); })}

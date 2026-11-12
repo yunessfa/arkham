@@ -122,8 +122,14 @@ class ProductView(PublicRead):
             )
         if p.get("featured") == "1":
             qs = qs.filter(featured=True)
-        sort = p.get("sort", "newest")
-        if sort == "bestselling":
+        sort = p.get("sort", "recommended")
+        if sort == "recommended":
+            # In-stock honeys first, then the catalogue's own order.
+            from django.db.models import Exists, OuterRef
+
+            in_stock = Variant.objects.filter(product=OuterRef("pk"), active=True, stock__gt=F("reserved"))
+            qs = qs.annotate(in_stock=Exists(in_stock)).order_by("-in_stock", "-featured", "sort_order", "-id")
+        elif sort == "bestselling":
             from django.db.models import OuterRef, Subquery
 
             sales = (
@@ -206,6 +212,10 @@ class SessionView(APIView):
                 "development": settings.DEBUG,
                 "phone_login": sms_enabled(),
                 "demo_mode": settings.DEMO_MODE or SiteContent.objects.filter(key="demo-notice", published=True).exists(),
+                "profile_complete": bool(
+                    u.is_authenticated
+                    and getattr(getattr(u, "customer", None), "completed_at", None)
+                ),
             }
         )
 
@@ -875,17 +885,55 @@ class PhoneVerifyView(APIView):
         return Response({"ok": True, "created": created, "needs_name": not user.first_name})
 
 
+def profile_payload(user):
+    from .models import CustomerProfile
+
+    prof = CustomerProfile.objects.filter(user=user).first()
+    phone = prof.phone if prof and prof.phone else (user.username if PHONE_RE.match(user.username or "") else "")
+    return {
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "phone": phone,
+        "birthday": prof.birthday if prof else "",
+        "preferences": prof.preferences if prof else {},
+        "marketing": prof.marketing if prof else False,
+        "completed": bool(prof and prof.completed_at),
+    }
+
+
 class ProfileView(APIView):
+    """Signup / account details. POST is partial: only sent fields change."""
+
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, r):
+        return Response(profile_payload(r.user))
 
     @method_decorator(csrf_protect)
     def post(self, r):
-        name = serializers.CharField(max_length=100, min_length=2).run_validation(
-            (r.data.get("first_name") or "").strip()
-        )
-        r.user.first_name = name
-        r.user.save(update_fields=["first_name"])
-        return Response({"ok": True})
+        from .models import CustomerProfile
+
+        s = ProfileSerializer(data=r.data, partial=True, context={"user": r.user})
+        s.is_valid(raise_exception=True)
+        d = s.validated_data
+        u, fields = r.user, []
+        for key in ("first_name", "last_name", "email"):
+            if key in d:
+                setattr(u, key, d[key])
+                fields.append(key)
+        if fields:
+            u.save(update_fields=fields)
+        prof, _ = CustomerProfile.objects.get_or_create(user=u)
+        for key in ("phone", "birthday", "preferences", "marketing"):
+            if key in d:
+                setattr(prof, key, d[key])
+        if d.get("complete") and not prof.completed_at:
+            prof.completed_at = timezone.now()
+        prof.save()
+        if d.get("marketing") and u.email:
+            Newsletter.objects.get_or_create(email=u.email.lower())
+        return Response(profile_payload(u))
 
 
 @api_view(["GET"])
@@ -914,8 +962,9 @@ PhoneVerifyView = extend_schema_view(
 )(PhoneVerifyView)
 ProfileView = extend_schema_view(
     post=extend_schema(
-        request=inline_serializer("ProfileInput", fields={"first_name": serializers.CharField()}),
+        request=ProfileSerializer,
         responses=OpenApiTypes.OBJECT,
-    )
+    ),
+    get=extend_schema(responses=OpenApiTypes.OBJECT),
 )(ProfileView)
 provinces = extend_schema(responses={200: OpenApiTypes.OBJECT})(provinces)

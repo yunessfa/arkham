@@ -10,7 +10,7 @@ export const palettes = [
 export const THEMES=['golden_gallery','noir_hive'] as const;
 export const themes=palettes.filter(p=>(THEMES as readonly string[]).includes(p.id));
 export type PaletteId = typeof palettes[number]['id'];
-export const DEFAULT_DESIGN:PaletteId='golden_gallery';
+export const DEFAULT_DESIGN:PaletteId='noir_hive';
 export function readDesign(value:unknown):PaletteId {
   if(!value || typeof value!=='object' || Array.isArray(value))return DEFAULT_DESIGN;
   const v=value as Record<string,unknown>;

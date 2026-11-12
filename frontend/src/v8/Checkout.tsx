@@ -10,7 +10,7 @@ const toLatin = (s: string) => s.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵
 const safeNext = (n: string | null) => (n && n.startsWith("/") && !n.startsWith("//") ? n : "/account");
 
 /* ------------------------------------------------------------------ login */
-export function PhoneLogin({ onDone, compact = false }: { onDone: () => void; compact?: boolean }) {
+export function PhoneLogin({ onDone, onCreated, compact = false }: { onDone: () => void; onCreated?: () => void; compact?: boolean }) {
   const { refresh, session } = useApp();
   const [step, setStep] = useState<"phone" | "code" | "name">("phone");
   const [phone, setPhone] = useState(""), [code, setCode] = useState(""), [name, setName] = useState("");
@@ -26,7 +26,7 @@ export function PhoneLogin({ onDone, compact = false }: { onDone: () => void; co
   async function verify(value = code) {
     if (busy) return;
     setErr(""); setBusy(true);
-    try { const d = await api("accounts/phone/verify/", "POST", { phone, code: toLatin(value) }); await refresh(); if (d.needs_name) setStep("name"); else onDone(); }
+    try { const d = await api("accounts/phone/verify/", "POST", { phone, code: toLatin(value) }); await refresh(); if ((d.created || d.needs_name) && onCreated) onCreated(); else if (d.needs_name) setStep("name"); else onDone(); }
     catch (e: any) { setErr(e.message); setCode(""); } finally { setBusy(false); }
   }
   if (!session?.phone_login) return null;
@@ -67,30 +67,42 @@ export function PhoneLogin({ onDone, compact = false }: { onDone: () => void; co
   );
 }
 
-function PasswordLogin({ onDone }: { onDone: () => void }) {
+function PasswordLogin({ onDone, onCreated, startRegister = false }: { onDone: () => void; onCreated?: () => void; startRegister?: boolean }) {
   const { refresh } = useApp();
-  const [register, setRegister] = useState(false), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  const [register, setRegister] = useState(startRegister), [err, setErr] = useState(""), [busy, setBusy] = useState(false), [show, setShow] = useState(false);
   return (
     <form className="password-login" key={String(register)} onSubmit={async (e) => {
       e.preventDefault(); setErr(""); setBusy(true);
-      try { await api("accounts/" + (register ? "register" : "login") + "/", "POST", Object.fromEntries(new FormData(e.currentTarget))); await refresh(); onDone(); }
+      const data = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
+      data.username = toLatin(String(data.username || "")).trim();
+      try {
+        await api("accounts/" + (register ? "register" : "login") + "/", "POST", data);
+        if (register) await api("accounts/profile/", "POST", { phone: /^09\d{9}$/.test(data.username) ? data.username : "", ...(data.last_name ? { last_name: data.last_name } : {}) }).catch(() => {});
+        await refresh();
+        register && onCreated ? onCreated() : onDone();
+      }
       catch (x: any) { setErr(x.message); } finally { setBusy(false); }
     }}>
-      <label className="field"><span>نام کاربری</span><input name="username" autoComplete="username" required pattern="[a-zA-Z0-9_.@+\-]{3,150}" dir="ltr" /></label>
-      {register && <>
-        <label className="field"><span>نام</span><input name="first_name" autoComplete="given-name" required maxLength={100} /></label>
-        <label className="field"><span>ایمیل</span><input name="email" type="email" autoComplete="email" required dir="ltr" /></label>
-      </>}
-      <label className="field"><span>رمز عبور</span><input name="password" type="password" required minLength={register ? 12 : 1} maxLength={128} autoComplete={register ? "new-password" : "current-password"} dir="ltr" /></label>
-      {register && <p className="muted small">حداقل ۱۲ نویسه؛ رمز متداول یا تمام‌عددی پذیرفته نمی‌شود.</p>}
+      {register && <div className="form-two">
+        <label className="field"><span>نام</span><input name="first_name" autoComplete="given-name" required minLength={2} maxLength={100} /></label>
+        <label className="field"><span>نام خانوادگی</span><input name="last_name" autoComplete="family-name" maxLength={150} /></label>
+      </div>}
+      <label className="field"><span>{register ? "شمارهٔ موبایل" : "موبایل یا نام کاربری"}</span>
+        <div className="field-affix"><Icon name={register ? "phone" : "user"} size={20} /><input name="username" autoComplete="username" required dir="ltr" {...(register ? { type: "tel", inputMode: "numeric" as const, placeholder: "09121234567", pattern: "(09|۰۹)[0-9۰-۹]{9}", title: "شمارهٔ موبایل ۱۱ رقمی که با ۰۹ شروع شود" } : {})} /></div>
+      </label>
+      {register && <label className="field"><span>ایمیل <small className="muted">(اختیاری)</small></span><input name="email" type="email" autoComplete="email" dir="ltr" /></label>}
+      <label className="field"><span>رمز عبور</span>
+        <div className="field-affix pw"><input name="password" type={show ? "text" : "password"} required minLength={register ? 12 : 1} maxLength={128} autoComplete={register ? "new-password" : "current-password"} dir="ltr" /><button type="button" className="pw-toggle" onClick={() => setShow(!show)}>{show ? "پنهان" : "نمایش"}</button></div>
+      </label>
+      {register && <p className="muted small">حداقل ۱۲ نویسه؛ رمز متداول یا تمام‌عددی پذیرفته نمی‌شود. بعد از ساخت حساب، در دو دقیقه سلیقه و آدرستان را ثبت می‌کنید.</p>}
       <button className="gold wide" disabled={busy}>{busy ? "…" : register ? "ساخت حساب" : "ورود"}</button>
-      <button type="button" className="text-button" onClick={() => setRegister(!register)}>{register ? "حساب دارید؟ ورود" : "ساخت حساب با نام کاربری"}</button>
+      <button type="button" className="text-button" onClick={() => setRegister(!register)}>{register ? "حساب دارید؟ ورود" : "حساب ندارید؟ ثبت‌نام"}</button>
       {err && <p className="error" role="alert">{err}</p>}
     </form>
   );
 }
 
-export function LoginPanel({ onDone, compact = false }: { onDone: () => void; compact?: boolean }) {
+export function LoginPanel({ onDone, onCreated, compact = false, startRegister = false }: { onDone: () => void; onCreated?: () => void; compact?: boolean; startRegister?: boolean }) {
   const { session } = useApp();
   const [mode, setMode] = useState<"phone" | "password">("phone");
   const phone = !!session?.phone_login;
@@ -103,7 +115,7 @@ export function LoginPanel({ onDone, compact = false }: { onDone: () => void; co
           <button role="tab" aria-selected={active === "password"} onClick={() => setMode("password")}>با رمز عبور</button>
         </div>
       )}
-      {active === "phone" ? <PhoneLogin onDone={onDone} compact={compact} /> : <PasswordLogin onDone={onDone} />}
+      {active === "phone" ? <PhoneLogin onDone={onDone} onCreated={onCreated} compact={compact} /> : <PasswordLogin onDone={onDone} onCreated={onCreated} startRegister={startRegister} />}
     </div>
   );
 }
@@ -112,15 +124,16 @@ export function LoginPage() {
   const nav = useNavigate(), [params] = useSearchParams();
   const { session } = useApp();
   const next = safeNext(params.get("next"));
-  useEffect(() => { if (session?.authenticated) nav(next, { replace: true }); }, [session?.authenticated]);
+  const [joining, setJoining] = useState(false);
+  useEffect(() => { if (session?.authenticated && !joining) nav(next, { replace: true }); }, [session?.authenticated]);
   return (
     <main className="page wrap auth-page">
       <div className="auth-card">
         <span className="auth-hex" aria-hidden="true"><HexMark /></span>
         <span className="auth-kicker" dir="ltr">WELCOME TO THE HIVE</span>
-        <h1 tabIndex={-1}>ورود به ارکام</h1>
-        <p className="muted">برای ثبت سفارش، پیگیری و ذخیرهٔ علاقه‌مندی‌ها.</p>
-        <LoginPanel onDone={() => nav(next, { replace: true })} />
+        <h1 tabIndex={-1}>ورود یا ثبت‌نام</h1>
+        <p className="muted">برای ثبت سفارش، پیگیری، ذخیرهٔ سلیقه و پیشنهادهای مخصوص شما.</p>
+        <LoginPanel startRegister={params.get("join") === "1"} onDone={() => nav(next, { replace: true })} onCreated={() => { setJoining(true); nav("/welcome?next=" + encodeURIComponent(next), { replace: true }); }} />
       </div>
     </main>
   );
@@ -184,7 +197,7 @@ export function CartPage() {
 }
 
 /* --------------------------------------------------------------- checkout */
-function AddressForm({ onSaved, onCancel }: { onSaved: (id: number) => void; onCancel?: () => void }) {
+export function AddressForm({ onSaved, onCancel }: { onSaved: (id: number) => void; onCancel?: () => void }) {
   const provinces = useData("provinces/");
   const [err, setErr] = useState(""), [busy, setBusy] = useState(false);
   return (

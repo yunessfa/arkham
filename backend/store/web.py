@@ -111,12 +111,14 @@ def shell(request):
         "/contact",
         "/track",
         "/manage",
+        "/honey-finder",
+        "/welcome",
     ] and path[0] not in ["category", "orders", "pages"]:
         code = 404
         title = "صفحه یافت نشد | ARKHAM"
-    # TEMP: Enamad title verification. Remove after Enamad confirms the domain.
-    if request.path == "/":
-        title = title + " | 46376397"
+    if request.path == "/honey-finder":
+        title = "عسل‌یاب ارکام | عسل مناسب خودتان را پیدا کنید"
+        description = "با شش سؤال کوتاه دربارهٔ کاربرد، طعم، رنگ، وزن و بودجه، عسل طبیعی مناسب خودتان را از میان عسل‌های تک‌گل ارکام پیدا کنید."
     html = (
         index.read_text()
         .replace("<!--SEO_TITLE-->", escape(title))
@@ -138,6 +140,7 @@ def shell(request):
                 "/favorites",
                 "/manage",
                 "/track",
+                "/welcome",
             ]
         )
         or bool(request.GET)

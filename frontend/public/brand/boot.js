@@ -3,6 +3,6 @@
   try {
     var ok = { golden_gallery: 1, noir_hive: 1 };
     var t = localStorage.getItem("arkham-theme") || localStorage.getItem("arkham-theme-published");
-    if (ok[t]) document.documentElement.setAttribute("data-design", t);
+    document.documentElement.setAttribute("data-design", ok[t] ? t : "noir_hive");
   } catch (e) {}
 })();

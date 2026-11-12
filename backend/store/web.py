@@ -114,6 +114,9 @@ def shell(request):
     ] and path[0] not in ["category", "orders", "pages"]:
         code = 404
         title = "صفحه یافت نشد | ARKHAM"
+    # TEMP: Enamad title verification. Remove after Enamad confirms the domain.
+    if request.path == "/":
+        title = title + " | 46376397"
     html = (
         index.read_text()
         .replace("<!--SEO_TITLE-->", escape(title))

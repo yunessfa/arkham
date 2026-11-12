@@ -71,3 +71,29 @@ class ProfileTests(TestCase):
 
     def test_profile_requires_login(self):
         self.assertIn(self.c.get("/api/v1/accounts/profile/").status_code, (401, 403))
+
+
+class SeoTests(TestCase):
+    def setUp(self):
+        call_command("load_catalog", verbosity=0)
+
+    def test_home_has_brand_schema_and_crawlable_catalogue(self):
+        r = self.client.get("/")
+        self.assertContains(r, '"@type": "Organization"')
+        self.assertContains(r, "info@arkham.ir")
+        self.assertContains(r, 'href="/products/thyme"')
+        self.assertNotContains(r, "telephone")
+
+    def test_product_and_faq_schema(self):
+        self.assertContains(self.client.get("/products/konar"), '"@type": "BreadcrumbList"')
+        self.assertContains(self.client.get("/pages/faq"), '"@type": "FAQPage"')
+
+    def test_sitemap_and_llms(self):
+        sm = self.client.get("/sitemap.xml").content.decode()
+        self.assertIn("/honey-finder", sm)
+        self.assertIn("/category/single-flower", sm)
+        self.assertNotIn("site-design", sm)
+        self.assertNotIn("catalog-version", sm)
+        llms = self.client.get("/llms.txt")
+        self.assertEqual(llms.status_code, 200)
+        self.assertIn("عسل کُنار", llms.content.decode())

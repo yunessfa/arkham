@@ -56,6 +56,7 @@ urlpatterns = [
     path("api/v1/", include(router.urls)),
     path("sitemap.xml", web.sitemap),
     path("robots.txt", web.robots),
+    path("llms.txt", web.llms),
 ]
 if settings.DEBUG:
     from django.views.static import serve
